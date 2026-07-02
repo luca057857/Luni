@@ -1,0 +1,444 @@
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local Players = game:GetService("Players")
+
+local Luni = {}
+Luni.__index = Luni
+
+local function create(class, props, parent)
+    local inst = Instance.new(class)
+    for k, v in pairs(props) do
+        inst[k] = v
+    end
+    if parent then
+        inst.Parent = parent
+    end
+    return inst
+end
+
+local function addStroke(parent, thickness, color, transparency)
+    create("UIStroke", {
+        Thickness = thickness or 1,
+        Color = color or Color3.fromRGB(255, 255, 255),
+        Transparency = transparency or 0.85,
+    }, parent)
+end
+
+local Elements = {}
+
+function Elements.Label(parent, text)
+    create("TextLabel", {
+        Size = UDim2.new(1, 0, 0, 20),
+        BackgroundTransparency = 1,
+        Text = text,
+        TextColor3 = Color3.fromRGB(155, 161, 174),
+        Font = Enum.Font.Gotham,
+        TextSize = 13,
+        TextXAlignment = Enum.TextXAlignment.Left,
+    }, parent)
+end
+
+function Elements.Button(parent, text, callback)
+    local btn = create("TextButton", {
+        Size = UDim2.new(1, 0, 0, 32),
+        BackgroundColor3 = Color3.fromRGB(28, 30, 38),
+        Text = text,
+        TextColor3 = Color3.fromRGB(255, 255, 255),
+        Font = Enum.Font.GothamMedium,
+        TextSize = 13,
+        AutoButtonColor = false,
+    }, parent)
+    create("UICorner", { CornerRadius = UDim.new(0, 8) }, btn)
+    local scale = create("UIScale", { Scale = 1 }, btn)
+    btn.MouseEnter:Connect(function()
+        TweenService:Create(btn, TweenInfo.new(0.15), {
+            BackgroundColor3 = Color3.fromRGB(47, 111, 237),
+        }):Play()
+        TweenService:Create(scale, TweenInfo.new(0.15, Enum.EasingStyle.Quad), { Scale = 1.02 }):Play()
+    end)
+    btn.MouseLeave:Connect(function()
+        TweenService:Create(btn, TweenInfo.new(0.15), {
+            BackgroundColor3 = Color3.fromRGB(28, 30, 38),
+        }):Play()
+        TweenService:Create(scale, TweenInfo.new(0.15, Enum.EasingStyle.Quad), { Scale = 1 }):Play()
+    end)
+    btn.MouseButton1Down:Connect(function()
+        TweenService:Create(scale, TweenInfo.new(0.08, Enum.EasingStyle.Quad), { Scale = 0.95 }):Play()
+    end)
+    btn.MouseButton1Up:Connect(function()
+        TweenService:Create(scale, TweenInfo.new(0.15, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1.02 }):Play()
+    end)
+    btn.MouseButton1Click:Connect(function()
+        callback()
+    end)
+    return btn
+end
+
+function Elements.Toggle(parent, text, default, callback)
+    local row = create("Frame", { Size = UDim2.new(1, 0, 0, 24), BackgroundTransparency = 1 }, parent)
+    create("TextLabel", {
+        Size = UDim2.new(1, -50, 1, 0),
+        BackgroundTransparency = 1,
+        Text = text,
+        TextColor3 = Color3.fromRGB(240, 241, 245),
+        Font = Enum.Font.Gotham,
+        TextSize = 13,
+        TextXAlignment = Enum.TextXAlignment.Left,
+    }, row)
+    local track = create("Frame", {
+        Size = UDim2.new(0, 40, 0, 22),
+        Position = UDim2.new(1, -40, 0.5, -11),
+        BackgroundColor3 = default and Color3.fromRGB(47, 111, 237) or Color3.fromRGB(32, 34, 42),
+    }, row)
+    create("UICorner", { CornerRadius = UDim.new(1, 0) }, track)
+    addStroke(track, 1)
+    local knob = create("Frame", {
+        Size = UDim2.new(0, 18, 0, 18),
+        Position = default and UDim2.new(1, -20, 0.5, -9) or UDim2.new(0, 2, 0.5, -9),
+        BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+    }, track)
+    create("UICorner", { CornerRadius = UDim.new(1, 0) }, knob)
+    local knobScale = create("UIScale", { Scale = 1 }, knob)
+    local hitbox = create("TextButton", { Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, Text = "" }, track)
+    local state = default
+    hitbox.MouseButton1Click:Connect(function()
+        state = not state
+        TweenService:Create(track, TweenInfo.new(0.18, Enum.EasingStyle.Quad), {
+            BackgroundColor3 = state and Color3.fromRGB(47, 111, 237) or Color3.fromRGB(32, 34, 42),
+        }):Play()
+        TweenService:Create(knob, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            Position = state and UDim2.new(1, -20, 0.5, -9) or UDim2.new(0, 2, 0.5, -9),
+        }):Play()
+        local bounce = TweenService:Create(knobScale, TweenInfo.new(0.1, Enum.EasingStyle.Quad), { Scale = 1.25 })
+        bounce:Play()
+        bounce.Completed:Connect(function()
+            TweenService:Create(knobScale, TweenInfo.new(0.12, Enum.EasingStyle.Quad), { Scale = 1 }):Play()
+        end)
+        callback(state)
+    end)
+end
+
+function Elements.Slider(parent, text, min, max, default, callback)
+    local wrap = create("Frame", { Size = UDim2.new(1, 0, 0, 40), BackgroundTransparency = 1 }, parent)
+    local label = create("TextLabel", {
+        Size = UDim2.new(1, 0, 0, 16),
+        BackgroundTransparency = 1,
+        Text = text .. ": " .. tostring(default),
+        TextColor3 = Color3.fromRGB(240, 241, 245),
+        Font = Enum.Font.Gotham,
+        TextSize = 13,
+        TextXAlignment = Enum.TextXAlignment.Left,
+    }, wrap)
+    local track = create("Frame", {
+        Size = UDim2.new(1, 0, 0, 6),
+        Position = UDim2.new(0, 0, 0, 26),
+        BackgroundColor3 = Color3.fromRGB(32, 34, 42),
+    }, wrap)
+    create("UICorner", { CornerRadius = UDim.new(1, 0) }, track)
+    addStroke(track, 1)
+    local ratio = (default - min) / (max - min)
+    local fill = create("Frame", { Size = UDim2.new(0, 0, 1, 0), BackgroundColor3 = Color3.fromRGB(47, 111, 237) }, track)
+    create("UICorner", { CornerRadius = UDim.new(1, 0) }, fill)
+    local knob = create("Frame", {
+        Size = UDim2.new(0, 12, 0, 12),
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        Position = UDim2.new(ratio, 0, 0.5, 0),
+        BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+    }, track)
+    create("UICorner", { CornerRadius = UDim.new(1, 0) }, knob)
+    TweenService:Create(fill, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        Size = UDim2.new(ratio, 0, 1, 0),
+    }):Play()
+    local dragging = false
+    local function update(input, animated)
+        local relX = math.clamp((input.Position.X - track.AbsolutePosition.X) / track.AbsoluteSize.X, 0, 1)
+        local tweenInfo = TweenInfo.new(animated and 0.12 or 0.02, Enum.EasingStyle.Quad)
+        TweenService:Create(fill, tweenInfo, { Size = UDim2.new(relX, 0, 1, 0) }):Play()
+        TweenService:Create(knob, tweenInfo, { Position = UDim2.new(relX, 0, 0.5, 0) }):Play()
+        local value = math.floor(min + (max - min) * relX)
+        label.Text = text .. ": " .. tostring(value)
+        callback(value)
+    end
+    track.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            update(input, true)
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            update(input, false)
+        end
+    end)
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end)
+end
+
+function Elements.Dropdown(parent, text, options, default, callback)
+    local wrap = create("Frame", { Size = UDim2.new(1, 0, 0, 44), BackgroundTransparency = 1, ClipsDescendants = false }, parent)
+    create("TextLabel", {
+        Size = UDim2.new(1, 0, 0, 16),
+        BackgroundTransparency = 1,
+        Text = text,
+        TextColor3 = Color3.fromRGB(240, 241, 245),
+        Font = Enum.Font.Gotham,
+        TextSize = 13,
+        TextXAlignment = Enum.TextXAlignment.Left,
+    }, wrap)
+    local box = create("TextButton", {
+        Size = UDim2.new(1, 0, 0, 26),
+        Position = UDim2.new(0, 0, 0, 18),
+        BackgroundColor3 = Color3.fromRGB(24, 26, 32),
+        Text = default,
+        TextColor3 = Color3.fromRGB(240, 241, 245),
+        TextXAlignment = Enum.TextXAlignment.Left,
+        Font = Enum.Font.Gotham,
+        TextSize = 13,
+    }, wrap)
+    create("UICorner", { CornerRadius = UDim.new(0, 6) }, box)
+    addStroke(box, 1)
+    create("UIPadding", { PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 26) }, box)
+    local arrow = create("TextLabel", {
+        Size = UDim2.new(0, 16, 1, 0),
+        Position = UDim2.new(1, -20, 0, 0),
+        BackgroundTransparency = 1,
+        Text = "v",
+        TextColor3 = Color3.fromRGB(240, 241, 245),
+        Font = Enum.Font.GothamBold,
+        TextSize = 11,
+    }, box)
+    local fullHeight = #options * 26
+    local list = create("Frame", {
+        Size = UDim2.new(1, 0, 0, 0),
+        Position = UDim2.new(0, 0, 0, 46),
+        BackgroundColor3 = Color3.fromRGB(24, 26, 32),
+        ClipsDescendants = true,
+        Visible = false,
+        ZIndex = 5,
+    }, wrap)
+    create("UICorner", { CornerRadius = UDim.new(0, 6) }, list)
+    addStroke(list, 1)
+    create("UIListLayout", {}, list)
+    local open = false
+    for _, option in ipairs(options) do
+        local opt = create("TextButton", {
+            Size = UDim2.new(1, 0, 0, 26),
+            BackgroundTransparency = 1,
+            Text = option,
+            TextColor3 = Color3.fromRGB(240, 241, 245),
+            Font = Enum.Font.Gotham,
+            TextSize = 13,
+            ZIndex = 6,
+        }, list)
+        opt.MouseEnter:Connect(function()
+            TweenService:Create(opt, TweenInfo.new(0.1), { BackgroundTransparency = 0.85 }):Play()
+        end)
+        opt.MouseLeave:Connect(function()
+            TweenService:Create(opt, TweenInfo.new(0.1), { BackgroundTransparency = 1 }):Play()
+        end)
+        opt.MouseButton1Click:Connect(function()
+            box.Text = option
+            open = false
+            local closeTween = TweenService:Create(list, TweenInfo.new(0.15, Enum.EasingStyle.Quad), { Size = UDim2.new(1, 0, 0, 0) })
+            closeTween:Play()
+            closeTween.Completed:Connect(function()
+                list.Visible = false
+            end)
+            TweenService:Create(arrow, TweenInfo.new(0.15), { Rotation = 0 }):Play()
+            callback(option)
+        end)
+    end
+    box.MouseButton1Click:Connect(function()
+        open = not open
+        if open then
+            list.Visible = true
+            TweenService:Create(list, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                Size = UDim2.new(1, 0, 0, fullHeight),
+            }):Play()
+            TweenService:Create(arrow, TweenInfo.new(0.18), { Rotation = 180 }):Play()
+        else
+            local closeTween = TweenService:Create(list, TweenInfo.new(0.15, Enum.EasingStyle.Quad), { Size = UDim2.new(1, 0, 0, 0) })
+            closeTween:Play()
+            closeTween.Completed:Connect(function()
+                list.Visible = false
+            end)
+            TweenService:Create(arrow, TweenInfo.new(0.15), { Rotation = 0 }):Play()
+        end
+    end)
+end
+
+local Window = {}
+Window.__index = Window
+
+local Tab = {}
+Tab.__index = Tab
+
+function Tab:AddLabel(text)
+    Elements.Label(self._container, text)
+end
+function Tab:AddButton(text, cb)
+    return Elements.Button(self._container, text, cb)
+end
+function Tab:AddToggle(text, default, cb)
+    Elements.Toggle(self._container, text, default, cb)
+end
+function Tab:AddSlider(text, min, max, default, cb)
+    Elements.Slider(self._container, text, min, max, default, cb)
+end
+function Tab:AddDropdown(text, options, default, cb)
+    Elements.Dropdown(self._container, text, options, default, cb)
+end
+
+function Window:CreateTab(name)
+    local isFirst = #self._tabButtons == 0
+    if not self._tabBar.Visible then
+        self._tabBar.Visible = true
+        self._content.Visible = false
+    end
+    local container = create("ScrollingFrame", {
+        Size = UDim2.new(1, -20, 1, -90),
+        Position = UDim2.new(0, 10, 0, 84),
+        BackgroundTransparency = 1,
+        CanvasSize = UDim2.new(0, 0, 0, 0),
+        AutomaticCanvasSize = Enum.AutomaticSize.Y,
+        ScrollBarThickness = 4,
+        BorderSizePixel = 0,
+        Visible = isFirst,
+    }, self._frame)
+    create("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, container)
+    local tabBtn = create("TextButton", {
+        Size = UDim2.new(0, 90, 1, 0),
+        BackgroundColor3 = isFirst and Color3.fromRGB(47, 111, 237) or Color3.fromRGB(24, 26, 32),
+        Text = name,
+        TextColor3 = Color3.fromRGB(240, 241, 245),
+        Font = Enum.Font.Gotham,
+        TextSize = 12,
+    }, self._tabBar)
+    create("UICorner", { CornerRadius = UDim.new(0, 6) }, tabBtn)
+    addStroke(tabBtn, 1)
+    table.insert(self._tabButtons, tabBtn)
+    table.insert(self._tabContainers, container)
+    tabBtn.MouseButton1Click:Connect(function()
+        for _, c in ipairs(self._tabContainers) do
+            if c ~= container then
+                c.Visible = false
+            end
+        end
+        for _, b in ipairs(self._tabButtons) do
+            if b ~= tabBtn then
+                TweenService:Create(b, TweenInfo.new(0.15), { BackgroundColor3 = Color3.fromRGB(24, 26, 32) }):Play()
+            end
+        end
+        container.Visible = true
+        TweenService:Create(tabBtn, TweenInfo.new(0.15), { BackgroundColor3 = Color3.fromRGB(47, 111, 237) }):Play()
+    end)
+    return setmetatable({ _container = container }, Tab)
+end
+
+function Window:AddLabel(text)
+    Elements.Label(self._content, text)
+end
+function Window:AddButton(text, cb)
+    return Elements.Button(self._content, text, cb)
+end
+function Window:AddToggle(text, default, cb)
+    Elements.Toggle(self._content, text, default, cb)
+end
+function Window:AddSlider(text, min, max, default, cb)
+    Elements.Slider(self._content, text, min, max, default, cb)
+end
+function Window:AddDropdown(text, options, default, cb)
+    Elements.Dropdown(self._content, text, options, default, cb)
+end
+
+function Luni:CreateWindow(title)
+    local player = Players.LocalPlayer
+    local playerGui = player:WaitForChild("PlayerGui")
+    local existing = playerGui:FindFirstChild("LuniUI")
+    if existing then
+        existing:Destroy()
+    end
+    local ScreenGui = create("ScreenGui", {
+        Name = "LuniUI",
+        ResetOnSpawn = false,
+        ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+    }, playerGui)
+    local targetPosition = UDim2.new(1, -340, 0.5, -210)
+    local Main = create("Frame", {
+        Size = UDim2.new(0, 320, 0, 420),
+        Position = UDim2.new(1, 40, 0.5, -210),
+        BackgroundColor3 = Color3.fromRGB(13, 14, 18),
+        BorderSizePixel = 0,
+    }, ScreenGui)
+    create("UICorner", { CornerRadius = UDim.new(0, 12) }, Main)
+    addStroke(Main, 1, Color3.fromRGB(255, 255, 255), 0.82)
+    local TitleBar = create("Frame", {
+        Size = UDim2.new(1, 0, 0, 40),
+        BackgroundColor3 = Color3.fromRGB(10, 11, 14),
+        BorderSizePixel = 0,
+    }, Main)
+    create("UICorner", { CornerRadius = UDim.new(0, 12) }, TitleBar)
+    create("TextLabel", {
+        Size = UDim2.new(1, -20, 1, 0),
+        Position = UDim2.new(0, 12, 0, 0),
+        BackgroundTransparency = 1,
+        Text = title,
+        TextColor3 = Color3.fromRGB(245, 246, 248),
+        Font = Enum.Font.GothamMedium,
+        TextSize = 14,
+        TextXAlignment = Enum.TextXAlignment.Left,
+    }, TitleBar)
+    do
+        local dragging, dragStart, startPos
+        TitleBar.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                dragging = true
+                dragStart = input.Position
+                startPos = Main.Position
+            end
+        end)
+        UserInputService.InputChanged:Connect(function(input)
+            if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+                local delta = input.Position - dragStart
+                Main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+            end
+        end)
+        UserInputService.InputEnded:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                dragging = false
+            end
+        end)
+    end
+    local TabBar = create("Frame", {
+        Size = UDim2.new(1, -20, 0, 30),
+        Position = UDim2.new(0, 10, 0, 48),
+        BackgroundTransparency = 1,
+        Visible = false,
+    }, Main)
+    create("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 6) }, TabBar)
+    local Content = create("ScrollingFrame", {
+        Size = UDim2.new(1, -20, 1, -60),
+        Position = UDim2.new(0, 10, 0, 50),
+        BackgroundTransparency = 1,
+        CanvasSize = UDim2.new(0, 0, 0, 0),
+        AutomaticCanvasSize = Enum.AutomaticSize.Y,
+        ScrollBarThickness = 4,
+        BorderSizePixel = 0,
+    }, Main)
+    create("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, Content)
+    TweenService:Create(Main, TweenInfo.new(0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        Position = targetPosition,
+    }):Play()
+    return setmetatable({
+        _frame = Main,
+        _content = Content,
+        _tabBar = TabBar,
+        _tabButtons = {},
+        _tabContainers = {},
+    }, Window)
+end
+
+return Luni
