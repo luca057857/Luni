@@ -47,20 +47,6 @@ local Themes = {
         MainTransparency = 0,
         PanelTransparency = 0,
     },
-    transparent = {
-        MainBg = Color3.fromRGB(18, 19, 24),
-        PanelBg = Color3.fromRGB(28, 30, 36),
-        HeaderBg = Color3.fromRGB(14, 15, 19),
-        TrackBg = Color3.fromRGB(38, 40, 48),
-        Text = Color3.fromRGB(245, 246, 248),
-        Muted = Color3.fromRGB(180, 184, 194),
-        Knob = Color3.fromRGB(255, 255, 255),
-        Border = Color3.fromRGB(255, 255, 255),
-        BorderTransparency = 0.8,
-        Accent = Color3.fromRGB(47, 111, 237),
-        MainTransparency = 0.45,
-        PanelTransparency = 0.35,
-    },
 }
 
 local Theme = Themes.dark
@@ -231,73 +217,6 @@ function Elements.Keybind(parent, text, defaultKey, callback)
             end
             callback(state)
         end
-    end)
-end
-
-function Elements.ColorPicker(parent, text, defaultColor, callback)
-    local wrap = create("Frame", { Size = UDim2.new(1, 0, 0, 24), BackgroundTransparency = 1, ClipsDescendants = false }, parent)
-    create("TextLabel", {
-        Size = UDim2.new(1, -40, 1, 0),
-        BackgroundTransparency = 1,
-        Text = text,
-        TextColor3 = Theme.Text,
-        Font = Enum.Font.Gotham,
-        TextSize = 13,
-        TextXAlignment = Enum.TextXAlignment.Left,
-    }, wrap)
-    local swatch = create("TextButton", {
-        Size = UDim2.new(0, 28, 0, 20),
-        Position = UDim2.new(1, -28, 0.5, -10),
-        BackgroundColor3 = defaultColor,
-        Text = "",
-    }, wrap)
-    create("UICorner", { CornerRadius = UDim.new(0, 6) }, swatch)
-    addStroke(swatch, 1)
-
-    local palette = {
-        Color3.fromRGB(47, 111, 237),
-        Color3.fromRGB(239, 68, 68),
-        Color3.fromRGB(34, 197, 94),
-        Color3.fromRGB(234, 179, 8),
-        Color3.fromRGB(168, 85, 247),
-        Color3.fromRGB(236, 72, 153),
-        Color3.fromRGB(255, 255, 255),
-        Color3.fromRGB(20, 20, 24),
-    }
-
-    local grid = create("Frame", {
-        Size = UDim2.new(0, 132, 0, 64),
-        Position = UDim2.new(1, -132, 1, 6),
-        BackgroundColor3 = Theme.PanelBg,
-        Visible = false,
-        ZIndex = 6,
-    }, wrap)
-    create("UICorner", { CornerRadius = UDim.new(0, 8) }, grid)
-    addStroke(grid, 1)
-    create("UIPadding", {
-        PaddingLeft = UDim.new(0, 6),
-        PaddingRight = UDim.new(0, 6),
-        PaddingTop = UDim.new(0, 6),
-        PaddingBottom = UDim.new(0, 6),
-    }, grid)
-    create("UIGridLayout", { CellSize = UDim2.new(0, 24, 0, 24), CellPadding = UDim2.new(0, 4, 0, 4) }, grid)
-
-    for _, color in ipairs(palette) do
-        local swab = create("TextButton", {
-            BackgroundColor3 = color,
-            Text = "",
-            ZIndex = 7,
-        }, grid)
-        create("UICorner", { CornerRadius = UDim.new(0, 6) }, swab)
-        swab.MouseButton1Click:Connect(function()
-            swatch.BackgroundColor3 = color
-            grid.Visible = false
-            callback(color)
-        end)
-    end
-
-    swatch.MouseButton1Click:Connect(function()
-        grid.Visible = not grid.Visible
     end)
 end
 
@@ -600,9 +519,6 @@ end
 function Tab:AddKeybind(text, defaultKey, cb)
     Elements.Keybind(self._container, text, defaultKey, cb)
 end
-function Tab:AddColorPicker(text, defaultColor, cb)
-    Elements.ColorPicker(self._container, text, defaultColor, cb)
-end
 function Tab:AddTextbox(text, placeholder, cb)
     Elements.Textbox(self._container, text, placeholder, cb)
 end
@@ -699,9 +615,6 @@ function Window:AddDropdown(text, options, default, cb)
 end
 function Window:AddKeybind(text, defaultKey, cb)
     Elements.Keybind(self._content, text, defaultKey, cb)
-end
-function Window:AddColorPicker(text, defaultColor, cb)
-    Elements.ColorPicker(self._content, text, defaultColor, cb)
 end
 function Window:AddTextbox(text, placeholder, cb)
     Elements.Textbox(self._content, text, placeholder, cb)
