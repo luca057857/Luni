@@ -18,11 +18,58 @@ local function create(class, props, parent)
     return inst
 end
 
+local Themes = {
+    dark = {
+        MainBg = Color3.fromRGB(13, 14, 18),
+        PanelBg = Color3.fromRGB(24, 26, 32),
+        HeaderBg = Color3.fromRGB(10, 11, 14),
+        TrackBg = Color3.fromRGB(32, 34, 42),
+        Text = Color3.fromRGB(240, 241, 245),
+        Muted = Color3.fromRGB(155, 161, 174),
+        Knob = Color3.fromRGB(255, 255, 255),
+        Border = Color3.fromRGB(255, 255, 255),
+        BorderTransparency = 0.85,
+        Accent = Color3.fromRGB(47, 111, 237),
+        MainTransparency = 0,
+        PanelTransparency = 0,
+    },
+    light = {
+        MainBg = Color3.fromRGB(246, 247, 250),
+        PanelBg = Color3.fromRGB(255, 255, 255),
+        HeaderBg = Color3.fromRGB(233, 235, 240),
+        TrackBg = Color3.fromRGB(224, 226, 232),
+        Text = Color3.fromRGB(24, 26, 32),
+        Muted = Color3.fromRGB(105, 110, 122),
+        Knob = Color3.fromRGB(255, 255, 255),
+        Border = Color3.fromRGB(0, 0, 0),
+        BorderTransparency = 0.92,
+        Accent = Color3.fromRGB(47, 111, 237),
+        MainTransparency = 0,
+        PanelTransparency = 0,
+    },
+    transparent = {
+        MainBg = Color3.fromRGB(18, 19, 24),
+        PanelBg = Color3.fromRGB(28, 30, 36),
+        HeaderBg = Color3.fromRGB(14, 15, 19),
+        TrackBg = Color3.fromRGB(38, 40, 48),
+        Text = Color3.fromRGB(245, 246, 248),
+        Muted = Color3.fromRGB(180, 184, 194),
+        Knob = Color3.fromRGB(255, 255, 255),
+        Border = Color3.fromRGB(255, 255, 255),
+        BorderTransparency = 0.8,
+        Accent = Color3.fromRGB(47, 111, 237),
+        MainTransparency = 0.45,
+        PanelTransparency = 0.35,
+    },
+}
+
+local Theme = Themes.dark
+
 local function addStroke(parent, thickness, color, transparency)
     create("UIStroke", {
         Thickness = thickness or 1,
-        Color = color or Color3.fromRGB(255, 255, 255),
-        Transparency = transparency or 0.85,
+        Color = color or Theme.Border,
+        Transparency = transparency or Theme.BorderTransparency,
     }, parent)
 end
 
@@ -33,7 +80,7 @@ function Elements.Label(parent, text)
         Size = UDim2.new(1, 0, 0, 20),
         BackgroundTransparency = 1,
         Text = text,
-        TextColor3 = Color3.fromRGB(155, 161, 174),
+        TextColor3 = Theme.Muted,
         Font = Enum.Font.Gotham,
         TextSize = 13,
         TextXAlignment = Enum.TextXAlignment.Left,
@@ -43,9 +90,10 @@ end
 function Elements.Button(parent, text, callback)
     local btn = create("TextButton", {
         Size = UDim2.new(1, 0, 0, 32),
-        BackgroundColor3 = Color3.fromRGB(28, 30, 38),
+        BackgroundColor3 = Theme.PanelBg,
+        BackgroundTransparency = Theme.PanelTransparency,
         Text = text,
-        TextColor3 = Color3.fromRGB(255, 255, 255),
+        TextColor3 = Theme.Text,
         Font = Enum.Font.GothamMedium,
         TextSize = 13,
         AutoButtonColor = false,
@@ -54,13 +102,15 @@ function Elements.Button(parent, text, callback)
     local scale = create("UIScale", { Scale = 1 }, btn)
     btn.MouseEnter:Connect(function()
         TweenService:Create(btn, TweenInfo.new(0.15), {
-            BackgroundColor3 = Color3.fromRGB(47, 111, 237),
+            BackgroundColor3 = Theme.Accent,
+            BackgroundTransparency = 0,
         }):Play()
         TweenService:Create(scale, TweenInfo.new(0.15, Enum.EasingStyle.Quad), { Scale = 1.02 }):Play()
     end)
     btn.MouseLeave:Connect(function()
         TweenService:Create(btn, TweenInfo.new(0.15), {
-            BackgroundColor3 = Color3.fromRGB(28, 30, 38),
+            BackgroundColor3 = Theme.PanelBg,
+            BackgroundTransparency = Theme.PanelTransparency,
         }):Play()
         TweenService:Create(scale, TweenInfo.new(0.15, Enum.EasingStyle.Quad), { Scale = 1 }):Play()
     end)
@@ -82,7 +132,7 @@ function Elements.Toggle(parent, text, default, callback)
         Size = UDim2.new(1, -50, 1, 0),
         BackgroundTransparency = 1,
         Text = text,
-        TextColor3 = Color3.fromRGB(240, 241, 245),
+        TextColor3 = Theme.Text,
         Font = Enum.Font.Gotham,
         TextSize = 13,
         TextXAlignment = Enum.TextXAlignment.Left,
@@ -90,14 +140,14 @@ function Elements.Toggle(parent, text, default, callback)
     local track = create("Frame", {
         Size = UDim2.new(0, 40, 0, 22),
         Position = UDim2.new(1, -40, 0.5, -11),
-        BackgroundColor3 = default and Color3.fromRGB(47, 111, 237) or Color3.fromRGB(32, 34, 42),
+        BackgroundColor3 = default and Theme.Accent or Theme.TrackBg,
     }, row)
     create("UICorner", { CornerRadius = UDim.new(1, 0) }, track)
     addStroke(track, 1)
     local knob = create("Frame", {
         Size = UDim2.new(0, 18, 0, 18),
         Position = default and UDim2.new(1, -20, 0.5, -9) or UDim2.new(0, 2, 0.5, -9),
-        BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+        BackgroundColor3 = Theme.Knob,
     }, track)
     create("UICorner", { CornerRadius = UDim.new(1, 0) }, knob)
     local knobScale = create("UIScale", { Scale = 1 }, knob)
@@ -110,7 +160,7 @@ function Elements.Toggle(parent, text, default, callback)
     hitbox.MouseButton1Click:Connect(function()
         state = not state
         TweenService:Create(track, TweenInfo.new(0.18, Enum.EasingStyle.Quad), {
-            BackgroundColor3 = state and Color3.fromRGB(47, 111, 237) or Color3.fromRGB(32, 34, 42),
+            BackgroundColor3 = state and Theme.Accent or Theme.TrackBg,
         }):Play()
         TweenService:Create(knob, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
             Position = state and UDim2.new(1, -20, 0.5, -9) or UDim2.new(0, 2, 0.5, -9),
@@ -135,7 +185,7 @@ function Elements.Keybind(parent, text, defaultKey, callback)
         Size = UDim2.new(1, -70, 1, 0),
         BackgroundTransparency = 1,
         Text = text,
-        TextColor3 = Color3.fromRGB(240, 241, 245),
+        TextColor3 = Theme.Text,
         Font = Enum.Font.Gotham,
         TextSize = 13,
         TextXAlignment = Enum.TextXAlignment.Left,
@@ -143,9 +193,10 @@ function Elements.Keybind(parent, text, defaultKey, callback)
     local keyBtn = create("TextButton", {
         Size = UDim2.new(0, 60, 0, 22),
         Position = UDim2.new(1, -60, 0.5, -11),
-        BackgroundColor3 = Color3.fromRGB(24, 26, 32),
+        BackgroundColor3 = Theme.PanelBg,
+        BackgroundTransparency = Theme.PanelTransparency,
         Text = defaultKey,
-        TextColor3 = Color3.fromRGB(240, 241, 245),
+        TextColor3 = Theme.Text,
         Font = Enum.Font.GothamMedium,
         TextSize = 12,
     }, row)
@@ -189,7 +240,7 @@ function Elements.ColorPicker(parent, text, defaultColor, callback)
         Size = UDim2.new(1, -40, 1, 0),
         BackgroundTransparency = 1,
         Text = text,
-        TextColor3 = Color3.fromRGB(240, 241, 245),
+        TextColor3 = Theme.Text,
         Font = Enum.Font.Gotham,
         TextSize = 13,
         TextXAlignment = Enum.TextXAlignment.Left,
@@ -217,7 +268,7 @@ function Elements.ColorPicker(parent, text, defaultColor, callback)
     local grid = create("Frame", {
         Size = UDim2.new(0, 132, 0, 64),
         Position = UDim2.new(1, -132, 1, 6),
-        BackgroundColor3 = Color3.fromRGB(24, 26, 32),
+        BackgroundColor3 = Theme.PanelBg,
         Visible = false,
         ZIndex = 6,
     }, wrap)
@@ -256,7 +307,7 @@ function Elements.Slider(parent, text, min, max, default, callback)
         Size = UDim2.new(1, 0, 0, 16),
         BackgroundTransparency = 1,
         Text = text .. ": " .. tostring(default),
-        TextColor3 = Color3.fromRGB(240, 241, 245),
+        TextColor3 = Theme.Text,
         Font = Enum.Font.Gotham,
         TextSize = 13,
         TextXAlignment = Enum.TextXAlignment.Left,
@@ -264,18 +315,18 @@ function Elements.Slider(parent, text, min, max, default, callback)
     local track = create("Frame", {
         Size = UDim2.new(1, 0, 0, 6),
         Position = UDim2.new(0, 0, 0, 26),
-        BackgroundColor3 = Color3.fromRGB(32, 34, 42),
+        BackgroundColor3 = Theme.TrackBg,
     }, wrap)
     create("UICorner", { CornerRadius = UDim.new(1, 0) }, track)
     addStroke(track, 1)
     local ratio = (default - min) / (max - min)
-    local fill = create("Frame", { Size = UDim2.new(0, 0, 1, 0), BackgroundColor3 = Color3.fromRGB(47, 111, 237) }, track)
+    local fill = create("Frame", { Size = UDim2.new(0, 0, 1, 0), BackgroundColor3 = Theme.Accent }, track)
     create("UICorner", { CornerRadius = UDim.new(1, 0) }, fill)
     local knob = create("Frame", {
         Size = UDim2.new(0, 12, 0, 12),
         AnchorPoint = Vector2.new(0.5, 0.5),
         Position = UDim2.new(ratio, 0, 0.5, 0),
-        BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+        BackgroundColor3 = Theme.Knob,
     }, track)
     create("UICorner", { CornerRadius = UDim.new(1, 0) }, knob)
     TweenService:Create(fill, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
@@ -315,7 +366,7 @@ function Elements.Dropdown(parent, text, options, default, callback)
         Size = UDim2.new(1, 0, 0, 16),
         BackgroundTransparency = 1,
         Text = text,
-        TextColor3 = Color3.fromRGB(240, 241, 245),
+        TextColor3 = Theme.Text,
         Font = Enum.Font.Gotham,
         TextSize = 13,
         TextXAlignment = Enum.TextXAlignment.Left,
@@ -323,9 +374,10 @@ function Elements.Dropdown(parent, text, options, default, callback)
     local box = create("TextButton", {
         Size = UDim2.new(1, 0, 0, 26),
         Position = UDim2.new(0, 0, 0, 18),
-        BackgroundColor3 = Color3.fromRGB(24, 26, 32),
+        BackgroundColor3 = Theme.PanelBg,
+        BackgroundTransparency = Theme.PanelTransparency,
         Text = default,
-        TextColor3 = Color3.fromRGB(240, 241, 245),
+        TextColor3 = Theme.Text,
         TextXAlignment = Enum.TextXAlignment.Left,
         Font = Enum.Font.Gotham,
         TextSize = 13,
@@ -338,7 +390,7 @@ function Elements.Dropdown(parent, text, options, default, callback)
         Position = UDim2.new(1, -20, 0, 0),
         BackgroundTransparency = 1,
         Text = "v",
-        TextColor3 = Color3.fromRGB(240, 241, 245),
+        TextColor3 = Theme.Text,
         Font = Enum.Font.GothamBold,
         TextSize = 11,
     }, box)
@@ -346,7 +398,8 @@ function Elements.Dropdown(parent, text, options, default, callback)
     local list = create("Frame", {
         Size = UDim2.new(1, 0, 0, 0),
         Position = UDim2.new(0, 0, 0, 46),
-        BackgroundColor3 = Color3.fromRGB(24, 26, 32),
+        BackgroundColor3 = Theme.PanelBg,
+        BackgroundTransparency = Theme.PanelTransparency,
         ClipsDescendants = true,
         Visible = false,
         ZIndex = 5,
@@ -360,7 +413,7 @@ function Elements.Dropdown(parent, text, options, default, callback)
             Size = UDim2.new(1, 0, 0, 26),
             BackgroundTransparency = 1,
             Text = option,
-            TextColor3 = Color3.fromRGB(240, 241, 245),
+            TextColor3 = Theme.Text,
             Font = Enum.Font.Gotham,
             TextSize = 13,
             ZIndex = 6,
@@ -408,7 +461,7 @@ function Elements.Textbox(parent, text, placeholder, callback)
         Size = UDim2.new(1, 0, 0, 16),
         BackgroundTransparency = 1,
         Text = text,
-        TextColor3 = Color3.fromRGB(240, 241, 245),
+        TextColor3 = Theme.Text,
         Font = Enum.Font.Gotham,
         TextSize = 13,
         TextXAlignment = Enum.TextXAlignment.Left,
@@ -416,11 +469,12 @@ function Elements.Textbox(parent, text, placeholder, callback)
     local box = create("TextBox", {
         Size = UDim2.new(1, 0, 0, 26),
         Position = UDim2.new(0, 0, 0, 18),
-        BackgroundColor3 = Color3.fromRGB(24, 26, 32),
+        BackgroundColor3 = Theme.PanelBg,
+        BackgroundTransparency = Theme.PanelTransparency,
         Text = "",
         PlaceholderText = placeholder,
-        PlaceholderColor3 = Color3.fromRGB(120, 124, 134),
-        TextColor3 = Color3.fromRGB(240, 241, 245),
+        PlaceholderColor3 = Theme.Muted,
+        TextColor3 = Theme.Text,
         Font = Enum.Font.Gotham,
         TextSize = 13,
         ClearTextOnFocus = false,
@@ -443,7 +497,7 @@ function Elements.Paragraph(parent, title, body)
             Size = UDim2.new(1, 0, 0, 18),
             BackgroundTransparency = 1,
             Text = title,
-            TextColor3 = Color3.fromRGB(240, 241, 245),
+            TextColor3 = Theme.Text,
             Font = Enum.Font.GothamMedium,
             TextSize = 13,
             TextXAlignment = Enum.TextXAlignment.Left,
@@ -455,7 +509,7 @@ function Elements.Paragraph(parent, title, body)
         BackgroundTransparency = 1,
         Text = body,
         TextWrapped = true,
-        TextColor3 = Color3.fromRGB(155, 161, 174),
+        TextColor3 = Theme.Muted,
         Font = Enum.Font.Gotham,
         TextSize = 12,
         TextXAlignment = Enum.TextXAlignment.Left,
@@ -469,7 +523,7 @@ function Elements.ProgressBar(parent, text, min, max, refreshSeconds, getValue)
         Size = UDim2.new(1, 0, 0, 16),
         BackgroundTransparency = 1,
         Text = text,
-        TextColor3 = Color3.fromRGB(240, 241, 245),
+        TextColor3 = Theme.Text,
         Font = Enum.Font.Gotham,
         TextSize = 13,
         TextXAlignment = Enum.TextXAlignment.Left,
@@ -477,11 +531,11 @@ function Elements.ProgressBar(parent, text, min, max, refreshSeconds, getValue)
     local track = create("Frame", {
         Size = UDim2.new(1, 0, 0, 8),
         Position = UDim2.new(0, 0, 0, 26),
-        BackgroundColor3 = Color3.fromRGB(32, 34, 42),
+        BackgroundColor3 = Theme.TrackBg,
     }, wrap)
     create("UICorner", { CornerRadius = UDim.new(1, 0) }, track)
     addStroke(track, 1)
-    local fill = create("Frame", { Size = UDim2.new(0, 0, 1, 0), BackgroundColor3 = Color3.fromRGB(47, 111, 237) }, track)
+    local fill = create("Frame", { Size = UDim2.new(0, 0, 1, 0), BackgroundColor3 = Theme.Accent }, track)
     create("UICorner", { CornerRadius = UDim.new(1, 0) }, fill)
 
     task.spawn(function()
@@ -499,123 +553,22 @@ function Elements.ProgressBar(parent, text, min, max, refreshSeconds, getValue)
     end)
 end
 
-function Elements.MultiDropdown(parent, text, options, defaultOptions, callback)
-    local wrap = create("Frame", { Size = UDim2.new(1, 0, 0, 44), BackgroundTransparency = 1, ClipsDescendants = false }, parent)
-    create("TextLabel", {
-        Size = UDim2.new(1, 0, 0, 16),
-        BackgroundTransparency = 1,
-        Text = text,
-        TextColor3 = Color3.fromRGB(240, 241, 245),
-        Font = Enum.Font.Gotham,
-        TextSize = 13,
-        TextXAlignment = Enum.TextXAlignment.Left,
-    }, wrap)
-    local selected = {}
-    for _, opt in ipairs(defaultOptions) do
-        selected[opt] = true
-    end
-    local function countText()
-        local n = 0
-        for _ in pairs(selected) do
-            n += 1
-        end
-        return n .. " selected"
-    end
-    local box = create("TextButton", {
-        Size = UDim2.new(1, 0, 0, 26),
-        Position = UDim2.new(0, 0, 0, 18),
-        BackgroundColor3 = Color3.fromRGB(24, 26, 32),
-        Text = countText(),
-        TextColor3 = Color3.fromRGB(240, 241, 245),
-        TextXAlignment = Enum.TextXAlignment.Left,
-        Font = Enum.Font.Gotham,
-        TextSize = 13,
-    }, wrap)
-    create("UICorner", { CornerRadius = UDim.new(0, 6) }, box)
-    addStroke(box, 1)
-    create("UIPadding", { PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10) }, box)
-    local fullHeight = #options * 26
-    local list = create("Frame", {
-        Size = UDim2.new(1, 0, 0, 0),
-        Position = UDim2.new(0, 0, 0, 46),
-        BackgroundColor3 = Color3.fromRGB(24, 26, 32),
-        ClipsDescendants = true,
-        Visible = false,
-        ZIndex = 5,
-    }, wrap)
-    create("UICorner", { CornerRadius = UDim.new(0, 8) }, list)
-    addStroke(list, 1)
-    create("UIListLayout", {}, list)
-    local open = false
-    for _, option in ipairs(options) do
-        local opt = create("TextButton", {
-            Size = UDim2.new(1, 0, 0, 26),
-            BackgroundTransparency = selected[option] and 0.85 or 1,
-            BackgroundColor3 = Color3.fromRGB(47, 111, 237),
-            Text = (selected[option] and "* " or "   ") .. option,
-            TextColor3 = Color3.fromRGB(240, 241, 245),
-            Font = Enum.Font.Gotham,
-            TextSize = 13,
-            ZIndex = 6,
-        }, list)
-        opt.MouseButton1Click:Connect(function()
-            if selected[option] then
-                selected[option] = nil
-                opt.Text = "   " .. option
-                opt.BackgroundTransparency = 1
-            else
-                selected[option] = true
-                opt.Text = "* " .. option
-                opt.BackgroundTransparency = 0.85
-            end
-            box.Text = countText()
-            local result = {}
-            for _, o in ipairs(options) do
-                if selected[o] then
-                    table.insert(result, o)
-                end
-            end
-            callback(result)
-        end)
-    end
-    box.MouseButton1Click:Connect(function()
-        open = not open
-        if open then
-            list.Visible = true
-            TweenService:Create(wrap, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-                Size = UDim2.new(1, 0, 0, 46 + fullHeight + 6),
-            }):Play()
-            TweenService:Create(list, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-                Size = UDim2.new(1, 0, 0, fullHeight),
-            }):Play()
-        else
-            TweenService:Create(wrap, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
-                Size = UDim2.new(1, 0, 0, 44),
-            }):Play()
-            local closeTween = TweenService:Create(list, TweenInfo.new(0.15, Enum.EasingStyle.Quad), { Size = UDim2.new(1, 0, 0, 0) })
-            closeTween:Play()
-            closeTween.Completed:Connect(function()
-                list.Visible = false
-            end)
-        end
-    end)
-end
-
 function Elements.Divider(parent, text)
     local wrap = create("Frame", { Size = UDim2.new(1, 0, 0, 20), BackgroundTransparency = 1 }, parent)
     local line = create("Frame", {
         Size = UDim2.new(1, 0, 0, 1),
         Position = UDim2.new(0, 0, 0.5, 0),
-        BackgroundColor3 = Color3.fromRGB(40, 42, 50),
+        BackgroundColor3 = Theme.TrackBg,
         BorderSizePixel = 0,
     }, wrap)
     if text and text ~= "" then
         local label = create("TextLabel", {
             Size = UDim2.new(0, 0, 1, 0),
             AutomaticSize = Enum.AutomaticSize.X,
-            BackgroundColor3 = Color3.fromRGB(13, 14, 18),
+            BackgroundColor3 = Theme.MainBg,
+            BackgroundTransparency = Theme.MainTransparency,
             Text = "  " .. text .. "  ",
-            TextColor3 = Color3.fromRGB(155, 161, 174),
+            TextColor3 = Theme.Muted,
             Font = Enum.Font.GothamMedium,
             TextSize = 11,
         }, wrap)
@@ -662,9 +615,6 @@ end
 function Tab:AddProgressBar(text, min, max, refreshSeconds, getValue)
     Elements.ProgressBar(self._container, text, min, max, refreshSeconds, getValue)
 end
-function Tab:AddMultiDropdown(text, options, defaultOptions, cb)
-    Elements.MultiDropdown(self._container, text, options, defaultOptions, cb)
-end
 
 function Window:CreateTab(name)
     local isFirst = #self._tabButtons == 0
@@ -678,7 +628,9 @@ function Window:CreateTab(name)
         BackgroundTransparency = 1,
         CanvasSize = UDim2.new(0, 0, 0, 0),
         AutomaticCanvasSize = Enum.AutomaticSize.Y,
-        ScrollBarThickness = 4,
+        ScrollBarThickness = 5,
+        ScrollBarImageColor3 = Theme.Accent,
+        ScrollBarImageTransparency = 0.3,
         BorderSizePixel = 0,
         Visible = isFirst,
     }, self._frame)
@@ -690,9 +642,10 @@ function Window:CreateTab(name)
     end)
     local tabBtn = create("TextButton", {
         Size = UDim2.new(0, 90, 1, 0),
-        BackgroundColor3 = isFirst and Color3.fromRGB(47, 111, 237) or Color3.fromRGB(24, 26, 32),
+        BackgroundColor3 = isFirst and Theme.Accent or Theme.PanelBg,
+        BackgroundTransparency = isFirst and 0 or Theme.PanelTransparency,
         Text = name,
-        TextColor3 = Color3.fromRGB(240, 241, 245),
+        TextColor3 = Theme.Text,
         Font = Enum.Font.Gotham,
         TextSize = 12,
     }, self._tabBar)
@@ -708,11 +661,17 @@ function Window:CreateTab(name)
         end
         for _, b in ipairs(self._tabButtons) do
             if b ~= tabBtn then
-                TweenService:Create(b, TweenInfo.new(0.15), { BackgroundColor3 = Color3.fromRGB(24, 26, 32) }):Play()
+                TweenService:Create(b, TweenInfo.new(0.15), {
+                    BackgroundColor3 = Theme.PanelBg,
+                    BackgroundTransparency = Theme.PanelTransparency,
+                }):Play()
             end
         end
         container.Visible = true
-        TweenService:Create(tabBtn, TweenInfo.new(0.15), { BackgroundColor3 = Color3.fromRGB(47, 111, 237) }):Play()
+        TweenService:Create(tabBtn, TweenInfo.new(0.15), {
+            BackgroundColor3 = Theme.Accent,
+            BackgroundTransparency = 0,
+        }):Play()
         if self._resize then
             self._resize()
         end
@@ -756,11 +715,10 @@ end
 function Window:AddProgressBar(text, min, max, refreshSeconds, getValue)
     Elements.ProgressBar(self._content, text, min, max, refreshSeconds, getValue)
 end
-function Window:AddMultiDropdown(text, options, defaultOptions, cb)
-    Elements.MultiDropdown(self._content, text, options, defaultOptions, cb)
-end
 
-function Luni:CreateWindow(title)
+function Luni:CreateWindow(title, themeName)
+    Theme = Themes[themeName] or Themes.dark
+
     local player = Players.LocalPlayer
     local playerGui = player:WaitForChild("PlayerGui")
     local existing = playerGui:FindFirstChild("LuniUI")
@@ -774,7 +732,8 @@ function Luni:CreateWindow(title)
     _G.LuniToggleRegistry = {}
 
     local MIN_HEIGHT = 84
-    local MAX_HEIGHT = 380
+    local viewportHeight = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 800
+    local MAX_HEIGHT = math.clamp(viewportHeight - 120, 300, 620)
 
     local ScreenGui = create("ScreenGui", {
         Name = "LuniUI",
@@ -785,14 +744,16 @@ function Luni:CreateWindow(title)
     local Main = create("Frame", {
         Size = UDim2.new(0, 320, 0, MIN_HEIGHT),
         Position = UDim2.new(1, 40, 0.5, -210),
-        BackgroundColor3 = Color3.fromRGB(13, 14, 18),
+        BackgroundColor3 = Theme.MainBg,
+        BackgroundTransparency = Theme.MainTransparency,
         BorderSizePixel = 0,
     }, ScreenGui)
     create("UICorner", { CornerRadius = UDim.new(0, 12) }, Main)
-    addStroke(Main, 1, Color3.fromRGB(255, 255, 255), 0.82)
+    addStroke(Main, 1, Theme.Border, Theme.BorderTransparency - 0.03)
     local TitleBar = create("Frame", {
         Size = UDim2.new(1, 0, 0, 40),
-        BackgroundColor3 = Color3.fromRGB(10, 11, 14),
+        BackgroundColor3 = Theme.HeaderBg,
+        BackgroundTransparency = Theme.MainTransparency,
         BorderSizePixel = 0,
     }, Main)
     create("UICorner", { CornerRadius = UDim.new(0, 12) }, TitleBar)
@@ -801,7 +762,7 @@ function Luni:CreateWindow(title)
         Position = UDim2.new(0, 12, 0, 0),
         BackgroundTransparency = 1,
         Text = title,
-        TextColor3 = Color3.fromRGB(245, 246, 248),
+        TextColor3 = Theme.Text,
         Font = Enum.Font.GothamMedium,
         TextSize = 14,
         TextXAlignment = Enum.TextXAlignment.Left,
@@ -840,7 +801,9 @@ function Luni:CreateWindow(title)
         BackgroundTransparency = 1,
         CanvasSize = UDim2.new(0, 0, 0, 0),
         AutomaticCanvasSize = Enum.AutomaticSize.Y,
-        ScrollBarThickness = 4,
+        ScrollBarThickness = 5,
+        ScrollBarImageColor3 = Theme.Accent,
+        ScrollBarImageTransparency = 0.3,
         BorderSizePixel = 0,
     }, Main)
     local ContentLayout = create("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, Content)
