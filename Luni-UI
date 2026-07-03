@@ -2,6 +2,8 @@ local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 
+_G.LuniToggleRegistry = _G.LuniToggleRegistry or {}
+
 local Luni = {}
 Luni.__index = Luni
 
@@ -101,6 +103,10 @@ function Elements.Toggle(parent, text, default, callback)
     local knobScale = create("UIScale", { Scale = 1 }, knob)
     local hitbox = create("TextButton", { Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, Text = "" }, track)
     local state = default
+    local toggleId = "toggle_" .. tostring(tick()) .. "_" .. tostring(math.random(1, 1000000))
+    if state then
+        _G.LuniToggleRegistry[toggleId] = { callback = callback }
+    end
     hitbox.MouseButton1Click:Connect(function()
         state = not state
         TweenService:Create(track, TweenInfo.new(0.18, Enum.EasingStyle.Quad), {
@@ -114,7 +120,133 @@ function Elements.Toggle(parent, text, default, callback)
         bounce.Completed:Connect(function()
             TweenService:Create(knobScale, TweenInfo.new(0.12, Enum.EasingStyle.Quad), { Scale = 1 }):Play()
         end)
+        if state then
+            _G.LuniToggleRegistry[toggleId] = { callback = callback }
+        else
+            _G.LuniToggleRegistry[toggleId] = nil
+        end
         callback(state)
+    end)
+end
+
+function Elements.Keybind(parent, text, defaultKey, callback)
+    local row = create("Frame", { Size = UDim2.new(1, 0, 0, 24), BackgroundTransparency = 1 }, parent)
+    create("TextLabel", {
+        Size = UDim2.new(1, -70, 1, 0),
+        BackgroundTransparency = 1,
+        Text = text,
+        TextColor3 = Color3.fromRGB(240, 241, 245),
+        Font = Enum.Font.Gotham,
+        TextSize = 13,
+        TextXAlignment = Enum.TextXAlignment.Left,
+    }, row)
+    local keyBtn = create("TextButton", {
+        Size = UDim2.new(0, 60, 0, 22),
+        Position = UDim2.new(1, -60, 0.5, -11),
+        BackgroundColor3 = Color3.fromRGB(24, 26, 32),
+        Text = defaultKey,
+        TextColor3 = Color3.fromRGB(240, 241, 245),
+        Font = Enum.Font.GothamMedium,
+        TextSize = 12,
+    }, row)
+    create("UICorner", { CornerRadius = UDim.new(0, 6) }, keyBtn)
+    addStroke(keyBtn, 1)
+
+    local currentKey = defaultKey
+    local state = false
+    local listening = false
+    local toggleId = "keybind_" .. tostring(tick()) .. "_" .. tostring(math.random(1, 1000000))
+
+    keyBtn.MouseButton1Click:Connect(function()
+        listening = true
+        keyBtn.Text = "..."
+    end)
+
+    UserInputService.InputBegan:Connect(function(input, processed)
+        if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
+        if listening then
+            currentKey = input.KeyCode.Name
+            keyBtn.Text = currentKey
+            listening = false
+            return
+        end
+        if processed then return end
+        if input.KeyCode.Name == currentKey then
+            state = not state
+            if state then
+                _G.LuniToggleRegistry[toggleId] = { callback = callback }
+            else
+                _G.LuniToggleRegistry[toggleId] = nil
+            end
+            callback(state)
+        end
+    end)
+end
+
+function Elements.ColorPicker(parent, text, defaultColor, callback)
+    local wrap = create("Frame", { Size = UDim2.new(1, 0, 0, 24), BackgroundTransparency = 1, ClipsDescendants = false }, parent)
+    create("TextLabel", {
+        Size = UDim2.new(1, -40, 1, 0),
+        BackgroundTransparency = 1,
+        Text = text,
+        TextColor3 = Color3.fromRGB(240, 241, 245),
+        Font = Enum.Font.Gotham,
+        TextSize = 13,
+        TextXAlignment = Enum.TextXAlignment.Left,
+    }, wrap)
+    local swatch = create("TextButton", {
+        Size = UDim2.new(0, 28, 0, 20),
+        Position = UDim2.new(1, -28, 0.5, -10),
+        BackgroundColor3 = defaultColor,
+        Text = "",
+    }, wrap)
+    create("UICorner", { CornerRadius = UDim.new(0, 6) }, swatch)
+    addStroke(swatch, 1)
+
+    local palette = {
+        Color3.fromRGB(47, 111, 237),
+        Color3.fromRGB(239, 68, 68),
+        Color3.fromRGB(34, 197, 94),
+        Color3.fromRGB(234, 179, 8),
+        Color3.fromRGB(168, 85, 247),
+        Color3.fromRGB(236, 72, 153),
+        Color3.fromRGB(255, 255, 255),
+        Color3.fromRGB(20, 20, 24),
+    }
+
+    local grid = create("Frame", {
+        Size = UDim2.new(0, 132, 0, 64),
+        Position = UDim2.new(1, -132, 1, 6),
+        BackgroundColor3 = Color3.fromRGB(24, 26, 32),
+        Visible = false,
+        ZIndex = 6,
+    }, wrap)
+    create("UICorner", { CornerRadius = UDim.new(0, 8) }, grid)
+    addStroke(grid, 1)
+    create("UIPadding", {
+        PaddingLeft = UDim.new(0, 6),
+        PaddingRight = UDim.new(0, 6),
+        PaddingTop = UDim.new(0, 6),
+        PaddingBottom = UDim.new(0, 6),
+    }, grid)
+    create("UIGridLayout", { CellSize = UDim2.new(0, 24, 0, 24), CellPadding = UDim2.new(0, 4, 0, 4) }, grid)
+
+    for _, color in ipairs(palette) do
+        local swab = create("TextButton", {
+            BackgroundColor3 = color,
+            Text = "",
+            ZIndex = 7,
+        }, grid)
+        create("UICorner", { CornerRadius = UDim.new(0, 6) }, swab)
+        swab.MouseButton1Click:Connect(function()
+            swatch.BackgroundColor3 = color
+            grid.Visible = false
+            callback(color)
+        end)
+    end
+
+    swatch.MouseButton1Click:Connect(function()
+        grid.Visible = not grid.Visible
     end)
 end
 
@@ -270,6 +402,227 @@ function Elements.Dropdown(parent, text, options, default, callback)
     end)
 end
 
+function Elements.Textbox(parent, text, placeholder, callback)
+    local wrap = create("Frame", { Size = UDim2.new(1, 0, 0, 44), BackgroundTransparency = 1 }, parent)
+    create("TextLabel", {
+        Size = UDim2.new(1, 0, 0, 16),
+        BackgroundTransparency = 1,
+        Text = text,
+        TextColor3 = Color3.fromRGB(240, 241, 245),
+        Font = Enum.Font.Gotham,
+        TextSize = 13,
+        TextXAlignment = Enum.TextXAlignment.Left,
+    }, wrap)
+    local box = create("TextBox", {
+        Size = UDim2.new(1, 0, 0, 26),
+        Position = UDim2.new(0, 0, 0, 18),
+        BackgroundColor3 = Color3.fromRGB(24, 26, 32),
+        Text = "",
+        PlaceholderText = placeholder,
+        PlaceholderColor3 = Color3.fromRGB(120, 124, 134),
+        TextColor3 = Color3.fromRGB(240, 241, 245),
+        Font = Enum.Font.Gotham,
+        TextSize = 13,
+        ClearTextOnFocus = false,
+    }, wrap)
+    create("UICorner", { CornerRadius = UDim.new(0, 6) }, box)
+    addStroke(box, 1)
+    create("UIPadding", { PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10) }, box)
+    box.FocusLost:Connect(function(enterPressed)
+        if enterPressed then
+            callback(box.Text)
+        end
+    end)
+end
+
+function Elements.Paragraph(parent, title, body)
+    local wrap = create("Frame", { Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, BackgroundTransparency = 1 }, parent)
+    create("UIListLayout", { Padding = UDim.new(0, 2), SortOrder = Enum.SortOrder.LayoutOrder }, wrap)
+    if title and title ~= "" then
+        create("TextLabel", {
+            Size = UDim2.new(1, 0, 0, 18),
+            BackgroundTransparency = 1,
+            Text = title,
+            TextColor3 = Color3.fromRGB(240, 241, 245),
+            Font = Enum.Font.GothamMedium,
+            TextSize = 13,
+            TextXAlignment = Enum.TextXAlignment.Left,
+        }, wrap)
+    end
+    create("TextLabel", {
+        Size = UDim2.new(1, 0, 0, 0),
+        AutomaticSize = Enum.AutomaticSize.Y,
+        BackgroundTransparency = 1,
+        Text = body,
+        TextWrapped = true,
+        TextColor3 = Color3.fromRGB(155, 161, 174),
+        Font = Enum.Font.Gotham,
+        TextSize = 12,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextYAlignment = Enum.TextYAlignment.Top,
+    }, wrap)
+end
+
+function Elements.ProgressBar(parent, text, min, max, refreshSeconds, getValue)
+    local wrap = create("Frame", { Size = UDim2.new(1, 0, 0, 40), BackgroundTransparency = 1 }, parent)
+    local label = create("TextLabel", {
+        Size = UDim2.new(1, 0, 0, 16),
+        BackgroundTransparency = 1,
+        Text = text,
+        TextColor3 = Color3.fromRGB(240, 241, 245),
+        Font = Enum.Font.Gotham,
+        TextSize = 13,
+        TextXAlignment = Enum.TextXAlignment.Left,
+    }, wrap)
+    local track = create("Frame", {
+        Size = UDim2.new(1, 0, 0, 8),
+        Position = UDim2.new(0, 0, 0, 26),
+        BackgroundColor3 = Color3.fromRGB(32, 34, 42),
+    }, wrap)
+    create("UICorner", { CornerRadius = UDim.new(1, 0) }, track)
+    addStroke(track, 1)
+    local fill = create("Frame", { Size = UDim2.new(0, 0, 1, 0), BackgroundColor3 = Color3.fromRGB(47, 111, 237) }, track)
+    create("UICorner", { CornerRadius = UDim.new(1, 0) }, fill)
+
+    task.spawn(function()
+        while wrap.Parent do
+            local ok, value = pcall(getValue)
+            if ok and type(value) == "number" then
+                local ratio = math.clamp((value - min) / (max - min), 0, 1)
+                TweenService:Create(fill, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {
+                    Size = UDim2.new(ratio, 0, 1, 0),
+                }):Play()
+                label.Text = text .. ": " .. tostring(value)
+            end
+            task.wait(refreshSeconds)
+        end
+    end)
+end
+
+function Elements.MultiDropdown(parent, text, options, defaultOptions, callback)
+    local wrap = create("Frame", { Size = UDim2.new(1, 0, 0, 44), BackgroundTransparency = 1, ClipsDescendants = false }, parent)
+    create("TextLabel", {
+        Size = UDim2.new(1, 0, 0, 16),
+        BackgroundTransparency = 1,
+        Text = text,
+        TextColor3 = Color3.fromRGB(240, 241, 245),
+        Font = Enum.Font.Gotham,
+        TextSize = 13,
+        TextXAlignment = Enum.TextXAlignment.Left,
+    }, wrap)
+    local selected = {}
+    for _, opt in ipairs(defaultOptions) do
+        selected[opt] = true
+    end
+    local function countText()
+        local n = 0
+        for _ in pairs(selected) do
+            n += 1
+        end
+        return n .. " selected"
+    end
+    local box = create("TextButton", {
+        Size = UDim2.new(1, 0, 0, 26),
+        Position = UDim2.new(0, 0, 0, 18),
+        BackgroundColor3 = Color3.fromRGB(24, 26, 32),
+        Text = countText(),
+        TextColor3 = Color3.fromRGB(240, 241, 245),
+        TextXAlignment = Enum.TextXAlignment.Left,
+        Font = Enum.Font.Gotham,
+        TextSize = 13,
+    }, wrap)
+    create("UICorner", { CornerRadius = UDim.new(0, 6) }, box)
+    addStroke(box, 1)
+    create("UIPadding", { PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10) }, box)
+    local fullHeight = #options * 26
+    local list = create("Frame", {
+        Size = UDim2.new(1, 0, 0, 0),
+        Position = UDim2.new(0, 0, 0, 46),
+        BackgroundColor3 = Color3.fromRGB(24, 26, 32),
+        ClipsDescendants = true,
+        Visible = false,
+        ZIndex = 5,
+    }, wrap)
+    create("UICorner", { CornerRadius = UDim.new(0, 8) }, list)
+    addStroke(list, 1)
+    create("UIListLayout", {}, list)
+    local open = false
+    for _, option in ipairs(options) do
+        local opt = create("TextButton", {
+            Size = UDim2.new(1, 0, 0, 26),
+            BackgroundTransparency = selected[option] and 0.85 or 1,
+            BackgroundColor3 = Color3.fromRGB(47, 111, 237),
+            Text = (selected[option] and "* " or "   ") .. option,
+            TextColor3 = Color3.fromRGB(240, 241, 245),
+            Font = Enum.Font.Gotham,
+            TextSize = 13,
+            ZIndex = 6,
+        }, list)
+        opt.MouseButton1Click:Connect(function()
+            if selected[option] then
+                selected[option] = nil
+                opt.Text = "   " .. option
+                opt.BackgroundTransparency = 1
+            else
+                selected[option] = true
+                opt.Text = "* " .. option
+                opt.BackgroundTransparency = 0.85
+            end
+            box.Text = countText()
+            local result = {}
+            for _, o in ipairs(options) do
+                if selected[o] then
+                    table.insert(result, o)
+                end
+            end
+            callback(result)
+        end)
+    end
+    box.MouseButton1Click:Connect(function()
+        open = not open
+        if open then
+            list.Visible = true
+            TweenService:Create(wrap, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                Size = UDim2.new(1, 0, 0, 46 + fullHeight + 6),
+            }):Play()
+            TweenService:Create(list, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                Size = UDim2.new(1, 0, 0, fullHeight),
+            }):Play()
+        else
+            TweenService:Create(wrap, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
+                Size = UDim2.new(1, 0, 0, 44),
+            }):Play()
+            local closeTween = TweenService:Create(list, TweenInfo.new(0.15, Enum.EasingStyle.Quad), { Size = UDim2.new(1, 0, 0, 0) })
+            closeTween:Play()
+            closeTween.Completed:Connect(function()
+                list.Visible = false
+            end)
+        end
+    end)
+end
+
+function Elements.Divider(parent, text)
+    local wrap = create("Frame", { Size = UDim2.new(1, 0, 0, 20), BackgroundTransparency = 1 }, parent)
+    local line = create("Frame", {
+        Size = UDim2.new(1, 0, 0, 1),
+        Position = UDim2.new(0, 0, 0.5, 0),
+        BackgroundColor3 = Color3.fromRGB(40, 42, 50),
+        BorderSizePixel = 0,
+    }, wrap)
+    if text and text ~= "" then
+        local label = create("TextLabel", {
+            Size = UDim2.new(0, 0, 1, 0),
+            AutomaticSize = Enum.AutomaticSize.X,
+            BackgroundColor3 = Color3.fromRGB(13, 14, 18),
+            Text = "  " .. text .. "  ",
+            TextColor3 = Color3.fromRGB(155, 161, 174),
+            Font = Enum.Font.GothamMedium,
+            TextSize = 11,
+        }, wrap)
+        label.Position = UDim2.new(0, 8, 0.5, -8)
+    end
+end
+
 local Window = {}
 Window.__index = Window
 
@@ -291,6 +644,27 @@ end
 function Tab:AddDropdown(text, options, default, cb)
     Elements.Dropdown(self._container, text, options, default, cb)
 end
+function Tab:AddKeybind(text, defaultKey, cb)
+    Elements.Keybind(self._container, text, defaultKey, cb)
+end
+function Tab:AddColorPicker(text, defaultColor, cb)
+    Elements.ColorPicker(self._container, text, defaultColor, cb)
+end
+function Tab:AddTextbox(text, placeholder, cb)
+    Elements.Textbox(self._container, text, placeholder, cb)
+end
+function Tab:AddDivider(text)
+    Elements.Divider(self._container, text)
+end
+function Tab:AddParagraph(title, body)
+    Elements.Paragraph(self._container, title, body)
+end
+function Tab:AddProgressBar(text, min, max, refreshSeconds, getValue)
+    Elements.ProgressBar(self._container, text, min, max, refreshSeconds, getValue)
+end
+function Tab:AddMultiDropdown(text, options, defaultOptions, cb)
+    Elements.MultiDropdown(self._container, text, options, defaultOptions, cb)
+end
 
 function Window:CreateTab(name)
     local isFirst = #self._tabButtons == 0
@@ -299,7 +673,7 @@ function Window:CreateTab(name)
         self._content.Visible = false
     end
     local container = create("ScrollingFrame", {
-        Size = UDim2.new(1, -20, 1, -90),
+        Size = UDim2.new(1, -20, 0, 0),
         Position = UDim2.new(0, 10, 0, 84),
         BackgroundTransparency = 1,
         CanvasSize = UDim2.new(0, 0, 0, 0),
@@ -308,7 +682,12 @@ function Window:CreateTab(name)
         BorderSizePixel = 0,
         Visible = isFirst,
     }, self._frame)
-    create("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, container)
+    local layout = create("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, container)
+    layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        if container.Visible and self._resize then
+            self._resize()
+        end
+    end)
     local tabBtn = create("TextButton", {
         Size = UDim2.new(0, 90, 1, 0),
         BackgroundColor3 = isFirst and Color3.fromRGB(47, 111, 237) or Color3.fromRGB(24, 26, 32),
@@ -334,7 +713,13 @@ function Window:CreateTab(name)
         end
         container.Visible = true
         TweenService:Create(tabBtn, TweenInfo.new(0.15), { BackgroundColor3 = Color3.fromRGB(47, 111, 237) }):Play()
+        if self._resize then
+            self._resize()
+        end
     end)
+    if isFirst and self._resize then
+        task.defer(self._resize)
+    end
     return setmetatable({ _container = container }, Tab)
 end
 
@@ -353,6 +738,27 @@ end
 function Window:AddDropdown(text, options, default, cb)
     Elements.Dropdown(self._content, text, options, default, cb)
 end
+function Window:AddKeybind(text, defaultKey, cb)
+    Elements.Keybind(self._content, text, defaultKey, cb)
+end
+function Window:AddColorPicker(text, defaultColor, cb)
+    Elements.ColorPicker(self._content, text, defaultColor, cb)
+end
+function Window:AddTextbox(text, placeholder, cb)
+    Elements.Textbox(self._content, text, placeholder, cb)
+end
+function Window:AddDivider(text)
+    Elements.Divider(self._content, text)
+end
+function Window:AddParagraph(title, body)
+    Elements.Paragraph(self._content, title, body)
+end
+function Window:AddProgressBar(text, min, max, refreshSeconds, getValue)
+    Elements.ProgressBar(self._content, text, min, max, refreshSeconds, getValue)
+end
+function Window:AddMultiDropdown(text, options, defaultOptions, cb)
+    Elements.MultiDropdown(self._content, text, options, defaultOptions, cb)
+end
 
 function Luni:CreateWindow(title)
     local player = Players.LocalPlayer
@@ -361,6 +767,15 @@ function Luni:CreateWindow(title)
     if existing then
         existing:Destroy()
     end
+
+    for _, entry in pairs(_G.LuniToggleRegistry) do
+        pcall(entry.callback, false)
+    end
+    _G.LuniToggleRegistry = {}
+
+    local MIN_HEIGHT = 84
+    local MAX_HEIGHT = 380
+
     local ScreenGui = create("ScreenGui", {
         Name = "LuniUI",
         ResetOnSpawn = false,
@@ -368,7 +783,7 @@ function Luni:CreateWindow(title)
     }, playerGui)
     local targetPosition = UDim2.new(1, -340, 0.5, -210)
     local Main = create("Frame", {
-        Size = UDim2.new(0, 320, 0, 420),
+        Size = UDim2.new(0, 320, 0, MIN_HEIGHT),
         Position = UDim2.new(1, 40, 0.5, -210),
         BackgroundColor3 = Color3.fromRGB(13, 14, 18),
         BorderSizePixel = 0,
@@ -420,7 +835,7 @@ function Luni:CreateWindow(title)
     }, Main)
     create("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 6) }, TabBar)
     local Content = create("ScrollingFrame", {
-        Size = UDim2.new(1, -20, 1, -60),
+        Size = UDim2.new(1, -20, 0, 0),
         Position = UDim2.new(0, 10, 0, 50),
         BackgroundTransparency = 1,
         CanvasSize = UDim2.new(0, 0, 0, 0),
@@ -428,17 +843,61 @@ function Luni:CreateWindow(title)
         ScrollBarThickness = 4,
         BorderSizePixel = 0,
     }, Main)
-    create("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, Content)
+    local ContentLayout = create("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, Content)
+
+    local tabContainers = {}
+
+    local function resize()
+        local top = TabBar.Visible and 84 or 50
+        local activeContainer = Content
+        local layout = ContentLayout
+        if TabBar.Visible then
+            for _, c in ipairs(tabContainers) do
+                if c.Visible then
+                    activeContainer = c
+                    layout = c:FindFirstChildOfClass("UIListLayout")
+                    break
+                end
+            end
+        end
+        if not layout then return end
+        local desired = math.clamp(top + layout.AbsoluteContentSize.Y + 16, MIN_HEIGHT, MAX_HEIGHT)
+        TweenService:Create(Main, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {
+            Size = UDim2.new(0, 320, 0, desired),
+        }):Play()
+        TweenService:Create(activeContainer, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {
+            Size = UDim2.new(1, -20, 0, desired - top - 10),
+        }):Play()
+    end
+
+    ContentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(resize)
+
     TweenService:Create(Main, TweenInfo.new(0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
         Position = targetPosition,
     }):Play()
-    return setmetatable({
+
+    local self = setmetatable({
         _frame = Main,
         _content = Content,
         _tabBar = TabBar,
         _tabButtons = {},
-        _tabContainers = {},
+        _tabContainers = tabContainers,
+        _resize = resize,
     }, Window)
+
+    task.defer(resize)
+
+    if _G.LuniRespawnConnection then
+        _G.LuniRespawnConnection:Disconnect()
+    end
+    _G.LuniRespawnConnection = player.CharacterAdded:Connect(function()
+        task.wait(1)
+        for _, entry in pairs(_G.LuniToggleRegistry) do
+            pcall(entry.callback, true)
+        end
+    end)
+
+    return self
 end
 
 return Luni
