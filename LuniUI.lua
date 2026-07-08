@@ -194,7 +194,12 @@ function LuniUI:CreateWindow(config)
 	})
 
 	local width = config.Width or 300
-	local height = config.Height or 420
+	-- Height is a CEILING, not a fixed size: the window hugs its content and
+	-- only grows up to this many pixels tall (then scrolls) — a window with
+	-- one button shouldn't reserve the same space as one with twenty.
+	local maxHeight = config.Height or 420
+	local minHeight = 40 + 28 + 36 -- title bar + page padding + one row, roughly
+	local height = minHeight
 
 	-- Windows open middle-right by default (out of the way of the game's own
 	-- HUD/center). Override with config.AnchorPoint / config.Position if you
@@ -289,8 +294,23 @@ function LuniUI:CreateWindow(config)
 	local slideY = (anchor.Y > 0.5 and 24) or (anchor.Y < 0.5 and -24) or 0
 	local offscreenPos = finalPosition + UDim2.fromOffset(slideX, slideY)
 
+	local function currentTargetHeight()
+		return math.clamp(40 + 28 + layout.AbsoluteContentSize.Y, minHeight, maxHeight)
+	end
+
+	-- Re-fits the window to its content every time a section/element is added
+	-- or removed, so it never shows more empty space than it needs to.
+	layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+		height = currentTargetHeight()
+		if root.Visible then
+			tween(root, { Size = UDim2.fromOffset(width, height) }, 0.2)
+		end
+	end)
+
 	local function show()
+		height = currentTargetHeight()
 		root.Visible = true
+		root.Size = UDim2.fromOffset(width, height)
 		root.Position = offscreenPos
 		root.BackgroundTransparency = 1
 		tween(root, { Position = finalPosition, BackgroundTransparency = 0 }, 0.3, Enum.EasingStyle.Back)
