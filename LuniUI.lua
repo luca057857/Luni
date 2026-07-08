@@ -1,13 +1,12 @@
 --[[
 	Luni-UI
 	A light, Apple-style Roblox UI library with smooth animations.
-	https://github.com/YOUR_ORG/Luni-UI
+	https://github.com/luca057857/Luni
 
 	Quick start:
-		local LuniUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/YOUR_ORG/Luni-UI/main/src/LuniUI.lua"))()
+		local LuniUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/luca057857/Luni/refs/heads/main/LuniUI.lua"))()
 		local Window = LuniUI:CreateWindow({ Title = "My Script" })
-		local Tab = Window:AddTab("Main")
-		local Section = Tab:AddSection("General")
+		local Section = Window:AddSection("General")
 		Section:AddButton({ Text = "Click me", Callback = function() print("clicked") end })
 
 	Everything you'd want to tweak lives in LuniUI.Theme (colors, fonts, radius, animation speed).
@@ -95,10 +94,10 @@ local function padding(all)
 	})
 end
 
-local function ripple(target, x, y)
+local function ripple(target, x, y, color)
 	local circle = new("Frame", {
-		BackgroundColor3 = Color3.new(1, 1, 1),
-		BackgroundTransparency = 0.75,
+		BackgroundColor3 = color or Color3.new(1, 1, 1),
+		BackgroundTransparency = 0.7,
 		BorderSizePixel = 0,
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromOffset(x, y),
@@ -107,9 +106,36 @@ local function ripple(target, x, y)
 		Parent = target,
 	})
 	corner(UDim.new(1, 0)).Parent = circle
-	local size = math.max(target.AbsoluteSize.X, target.AbsoluteSize.Y) * 1.6
-	tween(circle, { Size = UDim2.fromOffset(size, size), BackgroundTransparency = 1 }, 0.5)
-	task.delay(0.5, function() circle:Destroy() end)
+	local size = math.max(target.AbsoluteSize.X, target.AbsoluteSize.Y) * 1.8
+	tween(circle, { Size = UDim2.fromOffset(size, size), BackgroundTransparency = 1 }, 0.55)
+	task.delay(0.55, function() circle:Destroy() end)
+end
+
+-- Fades + slides an element in from below. Used for anything that appears
+-- dynamically (sections, dropdown lists) so the UI never just pops.
+local function playIn(instance, offsetY)
+	offsetY = offsetY or 10
+	local goalPos = instance.Position
+	local goalTransparency = instance.BackgroundTransparency
+	instance.Position = goalPos + UDim2.fromOffset(0, offsetY)
+	instance.BackgroundTransparency = 1
+	tween(instance, { Position = goalPos, BackgroundTransparency = goalTransparency }, 0.28, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+end
+
+-- A soft glow ring used on focus/hover for interactive elements — an UIStroke
+-- whose transparency and color tween together to fake a light "focus ring".
+local function glow(instance, color)
+	local ring = new("UIStroke", {
+		Color = color or LuniUI.Theme.Accent,
+		Thickness = 2,
+		Transparency = 1,
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+		Parent = instance,
+	})
+	return {
+		On = function() tween(ring, { Transparency = 0.35 }, 0.15) end,
+		Off = function() tween(ring, { Transparency = 1 }, 0.2) end,
+	}
 end
 
 -- Global input tracking so the drag keeps following the cursor even when it
@@ -147,7 +173,7 @@ local function makeDraggable(handle, target)
 end
 
 --============================================================
--- WINDOW
+-- WINDOW — a single scrollable page, no tabs. Group things with AddSection.
 --============================================================
 function LuniUI:CreateWindow(config)
 	config = config or {}
@@ -162,7 +188,6 @@ function LuniUI:CreateWindow(config)
 
 	local width = config.Width or 300
 	local height = config.Height or 420
-	local tabBarHeight = 40
 
 	local root = new("Frame", {
 		Name = "Window",
@@ -193,58 +218,74 @@ function LuniUI:CreateWindow(config)
 	})
 	new("UIStroke", { Color = Theme.Border, Thickness = 1 }).Parent = titleBar
 
+	local dot = new("Frame", {
+		Size = UDim2.fromOffset(8, 8),
+		Position = UDim2.fromOffset(12, 16),
+		BackgroundColor3 = Theme.Accent,
+		Parent = titleBar,
+	})
+	corner(UDim.new(1, 0)).Parent = dot
+	task.spawn(function()
+		while dot.Parent do
+			tween(dot, { BackgroundTransparency = 0.5 }, 0.9, Enum.EasingStyle.Sine)
+			task.wait(0.9)
+			tween(dot, { BackgroundTransparency = 0 }, 0.9, Enum.EasingStyle.Sine)
+			task.wait(0.9)
+		end
+	end)
+
 	new("TextLabel", {
 		Text = config.Title or "Luni-UI",
 		Font = Theme.FontBold,
 		TextSize = 14,
 		TextColor3 = Theme.Text,
 		BackgroundTransparency = 1,
-		Size = UDim2.new(1, -24, 1, 0),
-		Position = UDim2.fromOffset(12, 0),
+		Size = UDim2.new(1, -32, 1, 0),
+		Position = UDim2.fromOffset(26, 0),
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Parent = titleBar,
 	})
 
 	makeDraggable(titleBar, root)
 
-	-- horizontal tab bar
-	local tabBar = new("Frame", {
-		Name = "TabBar",
-		Size = UDim2.new(1, 0, 0, tabBarHeight),
+	-- page
+	local page = new("ScrollingFrame", {
+		Name = "Page",
+		Size = UDim2.new(1, 0, 1, -40),
 		Position = UDim2.fromOffset(0, 40),
-		BackgroundColor3 = Theme.Background,
-		Parent = root,
-	})
-	new("UIStroke", { Color = Theme.Border, Thickness = 1 }).Parent = tabBar
-	local tabList = new("UIListLayout", {
-		FillDirection = Enum.FillDirection.Horizontal,
-		Padding = UDim.new(0, 4),
-		SortOrder = Enum.SortOrder.LayoutOrder,
-		HorizontalAlignment = Enum.HorizontalAlignment.Center,
-		VerticalAlignment = Enum.VerticalAlignment.Center,
-	})
-	tabList.Parent = tabBar
-	padding(6).Parent = tabBar
-
-	-- page container
-	local pageContainer = new("Frame", {
-		Name = "Pages",
-		Size = UDim2.new(1, 0, 1, -(40 + tabBarHeight)),
-		Position = UDim2.fromOffset(0, 40 + tabBarHeight),
 		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		ScrollBarThickness = 3,
+		ScrollBarImageColor3 = Theme.Border,
+		CanvasSize = UDim2.new(0, 0, 0, 0),
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
 		Parent = root,
 	})
+	padding(14).Parent = page
+	local layout = new("UIListLayout", {
+		Padding = UDim.new(0, 12),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+	})
+	layout.Parent = page
 
 	root.Size = UDim2.fromOffset(width, 0)
 	root.BackgroundTransparency = 1
-	tween(root, { Size = UDim2.fromOffset(width, height) }, 0.3)
+	tween(root, { Size = UDim2.fromOffset(width, height) }, 0.32, Enum.EasingStyle.Back)
 	tween(root, { BackgroundTransparency = 0 }, 0.3)
 
 	if config.ToggleKey then
 		UserInputService.InputBegan:Connect(function(input, gpe)
 			if gpe then return end
 			if input.KeyCode == config.ToggleKey then
-				root.Visible = not root.Visible
+				if root.Visible then
+					tween(root, { Size = UDim2.fromOffset(width, 0), BackgroundTransparency = 1 }, 0.2)
+					task.delay(0.2, function() root.Visible = false end)
+				else
+					root.Visible = true
+					root.Size = UDim2.fromOffset(width, 0)
+					root.BackgroundTransparency = 1
+					tween(root, { Size = UDim2.fromOffset(width, height), BackgroundTransparency = 0 }, 0.25, Enum.EasingStyle.Back)
+				end
 			end
 		end)
 	end
@@ -252,10 +293,8 @@ function LuniUI:CreateWindow(config)
 	local Window = setmetatable({
 		ScreenGui = screenGui,
 		Root = root,
-		TabBar = tabBar,
-		PageContainer = pageContainer,
-		Tabs = {},
-		_activeTab = nil,
+		Page = page,
+		_order = 0,
 	}, { __index = self._WindowMethods })
 
 	return Window
@@ -267,102 +306,20 @@ end
 LuniUI._WindowMethods = {}
 local WindowMethods = LuniUI._WindowMethods
 
-function WindowMethods:AddTab(name)
-	local Theme = LuniUI.Theme
-	local self_ = self
-
-	local button = new("TextButton", {
-		Text = name,
-		Font = Theme.Font,
-		TextSize = 13,
-		TextColor3 = Theme.MutedText,
-		BackgroundColor3 = Theme.Surface,
-		BackgroundTransparency = 1,
-		AutomaticSize = Enum.AutomaticSize.X,
-		Size = UDim2.new(0, 0, 0, 28),
-		AutoButtonColor = false,
-		Parent = self.TabBar,
-	})
-	corner(UDim.new(0, 8)).Parent = button
-	new("UIPadding", {
-		PaddingLeft = UDim.new(0, 12),
-		PaddingRight = UDim.new(0, 12),
-	}).Parent = button
-
-	local page = new("ScrollingFrame", {
-		Name = name .. "Page",
-		Size = UDim2.new(1, 0, 1, 0),
-		BackgroundTransparency = 1,
-		BorderSizePixel = 0,
-		ScrollBarThickness = 3,
-		ScrollBarImageColor3 = Theme.Border,
-		CanvasSize = UDim2.new(0, 0, 0, 0),
-		AutomaticCanvasSize = Enum.AutomaticSize.Y,
-		Visible = false,
-		Parent = self.PageContainer,
-	})
-	padding(16).Parent = page
-	local layout = new("UIListLayout", {
-		Padding = UDim.new(0, 12),
-		SortOrder = Enum.SortOrder.LayoutOrder,
-	})
-	layout.Parent = page
-
-	local Tab = setmetatable({
-		Name = name,
-		Button = button,
-		Page = page,
-		Window = self_,
-	}, { __index = LuniUI._TabMethods })
-
-	button.MouseButton1Click:Connect(function()
-		Tab:Select()
-	end)
-	button.MouseEnter:Connect(function()
-		if self_._activeTab ~= Tab then
-			tween(button, { BackgroundTransparency = 0.5 }, 0.12)
-		end
-	end)
-	button.MouseLeave:Connect(function()
-		if self_._activeTab ~= Tab then
-			tween(button, { BackgroundTransparency = 1 }, 0.12)
-		end
-	end)
-
-	table.insert(self.Tabs, Tab)
-	if not self._activeTab then
-		Tab:Select()
-	end
-	return Tab
+function WindowMethods:_nextOrder()
+	self._order += 1
+	return self._order
 end
 
---============================================================
--- TAB METHODS
---============================================================
-LuniUI._TabMethods = {}
-local TabMethods = LuniUI._TabMethods
-
-function TabMethods:Select()
-	local Theme = LuniUI.Theme
-	local window = self.Window
-	if window._activeTab then
-		local prev = window._activeTab
-		prev.Page.Visible = false
-		tween(prev.Button, { BackgroundTransparency = 1, TextColor3 = Theme.MutedText }, 0.15)
-	end
-	window._activeTab = self
-	self.Page.Visible = true
-	tween(self.Button, { BackgroundTransparency = 0, TextColor3 = Theme.Accent }, 0.15)
-end
-
-function TabMethods:AddSection(name)
+function WindowMethods:AddSection(name)
 	local Theme = LuniUI.Theme
 
 	local card = new("Frame", {
-		Name = name .. "Section",
+		Name = (name or "Section") .. "Section",
 		Size = UDim2.new(1, 0, 0, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundColor3 = Theme.Surface,
+		LayoutOrder = self:_nextOrder(),
 		Parent = self.Page,
 	})
 	corner().Parent = card
@@ -389,6 +346,8 @@ function TabMethods:AddSection(name)
 		})
 	end
 
+	playIn(card, 14)
+
 	local Section = setmetatable({
 		Frame = card,
 		_order = 1,
@@ -397,7 +356,7 @@ function TabMethods:AddSection(name)
 	return Section
 end
 -- Alias: "Category" reads better for grouped settings, identical behaviour.
-TabMethods.AddCategory = TabMethods.AddSection
+WindowMethods.AddCategory = WindowMethods.AddSection
 
 --============================================================
 -- SECTION METHODS + ELEMENT REGISTRY
@@ -466,15 +425,22 @@ LuniUI.Elements.Button = function(section, config, Theme)
 		Parent = section.Frame,
 	})
 	corner(UDim.new(0, 8)).Parent = btn
+	local ring = glow(btn)
 
-	btn.MouseEnter:Connect(function() tween(btn, { BackgroundColor3 = Theme.AccentDark }, 0.12) end)
-	btn.MouseLeave:Connect(function() tween(btn, { BackgroundColor3 = Theme.Accent }, 0.12) end)
+	btn.MouseEnter:Connect(function()
+		tween(btn, { BackgroundColor3 = Theme.AccentDark, Size = UDim2.new(1, 0, 0, 37) }, 0.12)
+		ring.On()
+	end)
+	btn.MouseLeave:Connect(function()
+		tween(btn, { BackgroundColor3 = Theme.Accent, Size = UDim2.new(1, 0, 0, 36) }, 0.12)
+		ring.Off()
+	end)
 	btn.MouseButton1Down:Connect(function(x, y)
 		ripple(btn, x - btn.AbsolutePosition.X, y - btn.AbsolutePosition.Y)
-		tween(btn, { Size = UDim2.new(1, 0, 0, 34) }, 0.08)
+		tween(btn, { Size = UDim2.new(1, 0, 0, 33) }, 0.08)
 	end)
 	btn.MouseButton1Up:Connect(function()
-		tween(btn, { Size = UDim2.new(1, 0, 0, 36) }, 0.1)
+		tween(btn, { Size = UDim2.new(1, 0, 0, 37) }, 0.12, Enum.EasingStyle.Back)
 	end)
 	btn.MouseButton1Click:Connect(function()
 		if config.Callback then
@@ -525,13 +491,25 @@ LuniUI.Elements.Toggle = function(section, config, Theme)
 	local function apply(newState, silent)
 		state = newState
 		tween(track, { BackgroundColor3 = state and Theme.Accent or Theme.Border }, Theme.AnimSpeed)
-		tween(knob, { Position = state and UDim2.new(1, -20, 0.5, -9) or UDim2.new(0, 2, 0.5, -9) }, Theme.AnimSpeed)
+		-- knob "squishes" while it travels, then snaps back — reads as a bouncier flip
+		tween(knob, { Size = UDim2.fromOffset(24, 18) }, 0.1)
+		tween(knob, {
+			Position = state and UDim2.new(1, -26, 0.5, -9) or UDim2.new(0, 2, 0.5, -9),
+		}, 0.14)
+		task.delay(0.12, function()
+			tween(knob, { Size = UDim2.fromOffset(18, 18) }, 0.12, Enum.EasingStyle.Back)
+			tween(knob, {
+				Position = state and UDim2.new(1, -20, 0.5, -9) or UDim2.new(0, 2, 0.5, -9),
+			}, 0.14, Enum.EasingStyle.Back)
+		end)
 		if not silent and config.Callback then
 			task.spawn(config.Callback, state)
 		end
 	end
 
 	track.MouseButton1Click:Connect(function() apply(not state) end)
+	track.MouseEnter:Connect(function() tween(track, { Size = UDim2.fromOffset(42, 23) }, 0.1) end)
+	track.MouseLeave:Connect(function() tween(track, { Size = UDim2.fromOffset(40, 22) }, 0.1) end)
 
 	return {
 		Instance = row,
@@ -620,6 +598,8 @@ LuniUI.Elements.Slider = function(section, config, Theme)
 	bar.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 			dragging = true
+			tween(knob, { Size = UDim2.fromOffset(18, 18) }, 0.1, Enum.EasingStyle.Back)
+			tween(bar, { Size = UDim2.new(1, 0, 0, 8) }, 0.1)
 			setFromAlpha((input.Position.X - bar.AbsolutePosition.X) / bar.AbsoluteSize.X)
 		end
 	end)
@@ -629,8 +609,10 @@ LuniUI.Elements.Slider = function(section, config, Theme)
 		end
 	end)
 	UserInputService.InputEnded:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		if dragging and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
 			dragging = false
+			tween(knob, { Size = UDim2.fromOffset(14, 14) }, 0.12, Enum.EasingStyle.Back)
+			tween(bar, { Size = UDim2.new(1, 0, 0, 6) }, 0.12)
 		end
 	end)
 
@@ -677,6 +659,7 @@ LuniUI.Elements.Dropdown = function(section, config, Theme)
 	})
 	corner(UDim.new(0, 8)).Parent = head
 	stroke(Theme.Border).Parent = head
+	local headRing = glow(head)
 
 	local selectedLabel = new("TextLabel", {
 		Text = tostring(selected or "Select..."),
@@ -715,8 +698,6 @@ LuniUI.Elements.Dropdown = function(section, config, Theme)
 	listLayout.Parent = list
 	padding(4).Parent = list
 
-	local optionHandle = { Set = nil }
-
 	local function select(option, silent)
 		selected = option
 		selectedLabel.Text = tostring(option)
@@ -743,8 +724,14 @@ LuniUI.Elements.Dropdown = function(section, config, Theme)
 				Parent = list,
 			})
 			corner(UDim.new(0, 6)).Parent = optBtn
-			optBtn.MouseEnter:Connect(function() tween(optBtn, { BackgroundTransparency = 0.5, BackgroundColor3 = Theme.Border }, 0.1) end)
-			optBtn.MouseLeave:Connect(function() tween(optBtn, { BackgroundTransparency = 1 }, 0.1) end)
+			optBtn.MouseEnter:Connect(function()
+				tween(optBtn, { BackgroundTransparency = 0.5, BackgroundColor3 = Theme.Accent }, 0.1)
+				tween(optBtn, { TextColor3 = Color3.new(1, 1, 1) }, 0.1)
+			end)
+			optBtn.MouseLeave:Connect(function()
+				tween(optBtn, { BackgroundTransparency = 1 }, 0.1)
+				tween(optBtn, { TextColor3 = Theme.Text }, 0.1)
+			end)
 			optBtn.MouseButton1Click:Connect(function()
 				select(option)
 				open = false
@@ -757,9 +744,16 @@ LuniUI.Elements.Dropdown = function(section, config, Theme)
 
 	head.MouseButton1Click:Connect(function()
 		open = not open
-		list.Visible = open
-		tween(arrow, { Rotation = open and 180 or 0 }, 0.15)
+		if open then
+			list.Visible = true
+			playIn(list, 6)
+		else
+			list.Visible = false
+		end
+		tween(arrow, { Rotation = open and 180 or 0 }, 0.18, Enum.EasingStyle.Back)
 	end)
+	head.MouseEnter:Connect(headRing.On)
+	head.MouseLeave:Connect(headRing.Off)
 
 	return {
 		Instance = row,
