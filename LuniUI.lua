@@ -112,24 +112,36 @@ local function ripple(target, x, y)
 	task.delay(0.5, function() circle:Destroy() end)
 end
 
+-- Global input tracking so the drag keeps following the cursor even when it
+-- moves faster than the handle (the old per-handle InputChanged lost tracking
+-- the moment the mouse left the title bar). Position is set directly, not
+-- tweened, so the window never lags behind the cursor.
 local function makeDraggable(handle, target)
-	local dragging, dragStart, startPos
+	local dragging = false
+	local dragStart, startPos
+
 	handle.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 			dragging = true
 			dragStart = input.Position
 			startPos = target.Position
-			input.Changed:Connect(function()
-				if input.UserInputState == Enum.UserInputState.End then dragging = false end
-			end)
 		end
 	end)
-	handle.InputChanged:Connect(function(input)
-		if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+
+	UserInputService.InputChanged:Connect(function(input)
+		if not dragging then return end
+		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
 			local delta = input.Position - dragStart
-			tween(target, {
-				Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-			}, 0.08, Enum.EasingStyle.Linear)
+			target.Position = UDim2.new(
+				startPos.X.Scale, startPos.X.Offset + delta.X,
+				startPos.Y.Scale, startPos.Y.Offset + delta.Y
+			)
+		end
+	end)
+
+	UserInputService.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = false
 		end
 	end)
 end
@@ -148,11 +160,15 @@ function LuniUI:CreateWindow(config)
 		Parent = PlayerGui,
 	})
 
+	local width = config.Width or 300
+	local height = config.Height or 420
+	local tabBarHeight = 40
+
 	local root = new("Frame", {
 		Name = "Window",
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromOffset(config.Width or 560, config.Height or 380),
+		Size = UDim2.fromOffset(width, height),
 		BackgroundColor3 = Theme.Background,
 		ClipsDescendants = true,
 		Parent = screenGui,
@@ -163,7 +179,7 @@ function LuniUI:CreateWindow(config)
 	-- title bar
 	local titleBar = new("Frame", {
 		Name = "TitleBar",
-		Size = UDim2.new(1, 0, 0, 44),
+		Size = UDim2.new(1, 0, 0, 40),
 		BackgroundColor3 = Theme.Surface,
 		Parent = root,
 	})
@@ -180,61 +196,48 @@ function LuniUI:CreateWindow(config)
 	new("TextLabel", {
 		Text = config.Title or "Luni-UI",
 		Font = Theme.FontBold,
-		TextSize = 15,
+		TextSize = 14,
 		TextColor3 = Theme.Text,
 		BackgroundTransparency = 1,
-		Size = UDim2.new(1, -100, 1, 0),
-		Position = UDim2.fromOffset(16, 0),
+		Size = UDim2.new(1, -24, 1, 0),
+		Position = UDim2.fromOffset(12, 0),
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Parent = titleBar,
 	})
 
-	local closeBtn = new("TextButton", {
-		Text = "×",
-		Font = Theme.FontBold,
-		TextSize = 20,
-		TextColor3 = Theme.MutedText,
-		BackgroundTransparency = 1,
-		Size = UDim2.fromOffset(44, 44),
-		Position = UDim2.new(1, -44, 0, 0),
-		Parent = titleBar,
-	})
-	closeBtn.MouseButton1Click:Connect(function()
-		tween(root, { Size = UDim2.fromOffset(0, 0) }, 0.2)
-		task.delay(0.2, function() screenGui:Destroy() end)
-	end)
-	closeBtn.MouseEnter:Connect(function() tween(closeBtn, { TextColor3 = Theme.Danger }, 0.12) end)
-	closeBtn.MouseLeave:Connect(function() tween(closeBtn, { TextColor3 = Theme.MutedText }, 0.12) end)
-
 	makeDraggable(titleBar, root)
 
-	-- tab rail
-	local tabRail = new("Frame", {
-		Name = "TabRail",
-		Size = UDim2.new(0, 140, 1, -44),
-		Position = UDim2.fromOffset(0, 44),
+	-- horizontal tab bar
+	local tabBar = new("Frame", {
+		Name = "TabBar",
+		Size = UDim2.new(1, 0, 0, tabBarHeight),
+		Position = UDim2.fromOffset(0, 40),
 		BackgroundColor3 = Theme.Background,
 		Parent = root,
 	})
+	new("UIStroke", { Color = Theme.Border, Thickness = 1 }).Parent = tabBar
 	local tabList = new("UIListLayout", {
+		FillDirection = Enum.FillDirection.Horizontal,
 		Padding = UDim.new(0, 4),
 		SortOrder = Enum.SortOrder.LayoutOrder,
+		HorizontalAlignment = Enum.HorizontalAlignment.Center,
+		VerticalAlignment = Enum.VerticalAlignment.Center,
 	})
-	tabList.Parent = tabRail
-	padding(10).Parent = tabRail
+	tabList.Parent = tabBar
+	padding(6).Parent = tabBar
 
 	-- page container
 	local pageContainer = new("Frame", {
 		Name = "Pages",
-		Size = UDim2.new(1, -140, 1, -44),
-		Position = UDim2.fromOffset(140, 44),
+		Size = UDim2.new(1, 0, 1, -(40 + tabBarHeight)),
+		Position = UDim2.fromOffset(0, 40 + tabBarHeight),
 		BackgroundTransparency = 1,
 		Parent = root,
 	})
 
-	root.Size = UDim2.fromOffset(config.Width or 560, 0)
+	root.Size = UDim2.fromOffset(width, 0)
 	root.BackgroundTransparency = 1
-	tween(root, { Size = UDim2.fromOffset(config.Width or 560, config.Height or 380) }, 0.3)
+	tween(root, { Size = UDim2.fromOffset(width, height) }, 0.3)
 	tween(root, { BackgroundTransparency = 0 }, 0.3)
 
 	if config.ToggleKey then
@@ -249,7 +252,7 @@ function LuniUI:CreateWindow(config)
 	local Window = setmetatable({
 		ScreenGui = screenGui,
 		Root = root,
-		TabRail = tabRail,
+		TabBar = tabBar,
 		PageContainer = pageContainer,
 		Tabs = {},
 		_activeTab = nil,
@@ -271,15 +274,20 @@ function WindowMethods:AddTab(name)
 	local button = new("TextButton", {
 		Text = name,
 		Font = Theme.Font,
-		TextSize = 14,
+		TextSize = 13,
 		TextColor3 = Theme.MutedText,
 		BackgroundColor3 = Theme.Surface,
 		BackgroundTransparency = 1,
-		Size = UDim2.new(1, 0, 0, 34),
+		AutomaticSize = Enum.AutomaticSize.X,
+		Size = UDim2.new(0, 0, 0, 28),
 		AutoButtonColor = false,
-		Parent = self.TabRail,
+		Parent = self.TabBar,
 	})
 	corner(UDim.new(0, 8)).Parent = button
+	new("UIPadding", {
+		PaddingLeft = UDim.new(0, 12),
+		PaddingRight = UDim.new(0, 12),
+	}).Parent = button
 
 	local page = new("ScrollingFrame", {
 		Name = name .. "Page",
