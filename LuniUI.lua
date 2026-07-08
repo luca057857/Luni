@@ -189,10 +189,17 @@ function LuniUI:CreateWindow(config)
 	local width = config.Width or 300
 	local height = config.Height or 420
 
+	-- Windows open middle-right by default (out of the way of the game's own
+	-- HUD/center). Override with config.AnchorPoint / config.Position if you
+	-- want it somewhere else — e.g. AnchorPoint = Vector2.new(0.5, 0.5),
+	-- Position = UDim2.fromScale(0.5, 0.5) for dead-center.
+	local anchor = config.AnchorPoint or Vector2.new(1, 0.5)
+	local finalPosition = config.Position or UDim2.new(1, -24, 0.5, 0)
+
 	local root = new("Frame", {
 		Name = "Window",
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.5),
+		AnchorPoint = anchor,
+		Position = finalPosition,
 		Size = UDim2.fromOffset(width, height),
 		BackgroundColor3 = Theme.Background,
 		ClipsDescendants = true,
@@ -268,24 +275,32 @@ function LuniUI:CreateWindow(config)
 	})
 	layout.Parent = page
 
-	root.Size = UDim2.fromOffset(width, 0)
-	root.BackgroundTransparency = 1
-	tween(root, { Size = UDim2.fromOffset(width, height) }, 0.32, Enum.EasingStyle.Back)
-	tween(root, { BackgroundTransparency = 0 }, 0.3)
+	-- Slide + fade toward finalPosition from whichever side the anchor faces
+	-- (a right-anchored window slides in from further right, etc.) so the
+	-- entrance direction always matches where the window actually lives.
+	local slideX = (anchor.X > 0.5 and 36) or (anchor.X < 0.5 and -36) or 0
+	local slideY = (anchor.Y > 0.5 and 24) or (anchor.Y < 0.5 and -24) or 0
+	local offscreenPos = finalPosition + UDim2.fromOffset(slideX, slideY)
+
+	local function show()
+		root.Visible = true
+		root.Position = offscreenPos
+		root.BackgroundTransparency = 1
+		tween(root, { Position = finalPosition, BackgroundTransparency = 0 }, 0.3, Enum.EasingStyle.Back)
+	end
+
+	local function hide()
+		tween(root, { Position = offscreenPos, BackgroundTransparency = 1 }, 0.2)
+		task.delay(0.2, function() root.Visible = false end)
+	end
+
+	show()
 
 	if config.ToggleKey then
 		UserInputService.InputBegan:Connect(function(input, gpe)
 			if gpe then return end
 			if input.KeyCode == config.ToggleKey then
-				if root.Visible then
-					tween(root, { Size = UDim2.fromOffset(width, 0), BackgroundTransparency = 1 }, 0.2)
-					task.delay(0.2, function() root.Visible = false end)
-				else
-					root.Visible = true
-					root.Size = UDim2.fromOffset(width, 0)
-					root.BackgroundTransparency = 1
-					tween(root, { Size = UDim2.fromOffset(width, height), BackgroundTransparency = 0 }, 0.25, Enum.EasingStyle.Back)
-				end
+				if root.Visible then hide() else show() end
 			end
 		end)
 	end
@@ -459,11 +474,11 @@ LuniUI.Elements.Toggle = function(section, config, Theme)
 		Size = UDim2.new(1, 0, 0, 24),
 		Parent = section.Frame,
 	})
-	new("TextLabel", {
+	local label = new("TextLabel", {
 		Text = config.Text or "Toggle",
 		Font = Theme.Font,
 		TextSize = Theme.TextSize,
-		TextColor3 = Theme.Text,
+		TextColor3 = state and Theme.Accent or Theme.Text,
 		BackgroundTransparency = 1,
 		Size = UDim2.new(1, -50, 1, 0),
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -491,6 +506,7 @@ LuniUI.Elements.Toggle = function(section, config, Theme)
 	local function apply(newState, silent)
 		state = newState
 		tween(track, { BackgroundColor3 = state and Theme.Accent or Theme.Border }, Theme.AnimSpeed)
+		tween(label, { TextColor3 = state and Theme.Accent or Theme.Text }, Theme.AnimSpeed)
 		-- knob "squishes" while it travels, then snaps back — reads as a bouncier flip
 		tween(knob, { Size = UDim2.fromOffset(24, 18) }, 0.1)
 		tween(knob, {
@@ -747,6 +763,16 @@ LuniUI.Elements.Dropdown = function(section, config, Theme)
 		if open then
 			list.Visible = true
 			playIn(list, 6)
+			-- each option eases in a beat after the last, instead of appearing all at once
+			for i, child in ipairs(list:GetChildren()) do
+				if child:IsA("TextButton") then
+					local goal = child.BackgroundTransparency
+					child.BackgroundTransparency = 1
+					task.delay((i - 1) * 0.03, function()
+						if child.Parent then tween(child, { BackgroundTransparency = goal }, 0.15) end
+					end)
+				end
+			end
 		else
 			list.Visible = false
 		end
