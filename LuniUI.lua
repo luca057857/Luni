@@ -178,9 +178,16 @@ end
 function LuniUI:CreateWindow(config)
 	config = config or {}
 	local Theme = self.Theme
+	local name = config.Name or "LuniUI"
+
+	-- Re-running a Luni-UI script (dev iteration, or a second script that
+	-- also uses the library) shouldn't stack windows on top of each other —
+	-- tear down whatever's already there under this name first.
+	local old = PlayerGui:FindFirstChild(name)
+	if old then old:Destroy() end
 
 	local screenGui = new("ScreenGui", {
-		Name = config.Name or "LuniUI",
+		Name = name,
 		ResetOnSpawn = false,
 		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 		Parent = PlayerGui,
