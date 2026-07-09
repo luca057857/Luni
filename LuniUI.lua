@@ -21,6 +21,21 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
+-- Shift+F frees (or re-locks) the mouse — a quick escape hatch for when some
+-- script leaves UserInputService.MouseBehavior stuck on LockCenter. Runs once
+-- globally so loading Luni-UI from several scripts doesn't stack listeners.
+if not _G.LuniUIMouseUnlock then
+	local locked = false
+	_G.LuniUIMouseUnlock = UserInputService.InputBegan:Connect(function(input, gpe)
+		if gpe then return end
+		if input.KeyCode == Enum.KeyCode.F and
+			(UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or UserInputService:IsKeyDown(Enum.KeyCode.RightShift)) then
+			locked = not locked
+			UserInputService.MouseBehavior = locked and Enum.MouseBehavior.LockCenter or Enum.MouseBehavior.Default
+		end
+	end)
+end
+
 local LuniUI = {}
 LuniUI.__index = LuniUI
 
