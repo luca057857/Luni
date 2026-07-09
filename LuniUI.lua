@@ -190,6 +190,7 @@ function LuniUI:CreateWindow(config)
 		Name = name,
 		ResetOnSpawn = false,
 		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+		DisplayOrder = 1000, -- render above other GUIs (DisplayOrder controls ScreenGui stacking, ZIndex only orders within one)
 		Parent = PlayerGui,
 	})
 
@@ -212,6 +213,7 @@ function LuniUI:CreateWindow(config)
 		Name = "Window",
 		AnchorPoint = anchor,
 		Position = finalPosition,
+		ZIndex = 1000,
 		Size = UDim2.fromOffset(width, height),
 		BackgroundColor3 = Theme.Background,
 		ClipsDescendants = true,
